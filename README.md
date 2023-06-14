@@ -1,4 +1,6 @@
-![logo]{https://github.com/sharmag02/sharmag02/blob/main/img/gauravbackcover.jpg}
+<h1 align="center">
+ <img src="img/gauravbackcover.jpg" />
+</h1>
 
 <h1 align="center">Hi 👋, I'm Gaurav Kumar</h1>
 <h3 align="center">A passionate frontend developer from India</h3>
