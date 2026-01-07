@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+
+
+
+/* ==============================
+   Portfolio Animations & Layout
+   ============================== */
+
+/* Portfolio fade-in animation */
+
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+/* Popup fade-in animation */
+@keyframes fadeInPopup {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.animate-fade-in-popup {
+  animation: fadeInPopup 0.4s ease-out forwards;
+}
+
+/* Smooth scroll for SPA */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent horizontal overflow */
+body {
+  overflow-x: hidden;
+}
+
+/* ==============================
+   Blog Content Styling
+   ============================== */
+@layer base {
+  /* Blog images */
+  .prose img {
+    border-radius: 1rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin: 1.5rem 0;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Blog blockquotes */
+  .prose blockquote {
+    border-left: 4px solid #CBD5E1; /* slate-300 */
+    padding-left: 1rem;
+    color: #475569; /* slate-700 */
+    font-style: italic;
+  }
+
+  /* Blog tables */
+  .prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+
+  .prose th,
+  .prose td {
+    border: 1px solid #E2E8F0; /* slate-200 */
+    padding: 0.5rem 1rem;
+  }
+
+  /* Optional: code blocks */
+  .prose pre {
+    background-color: #F1F5F9; /* slate-100 */
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+  }
+
+  .prose code {
+    background-color: #F1F5F9; /* slate-100 */
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: monospace;
+  }
+}

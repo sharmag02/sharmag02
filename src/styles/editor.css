@@ -1,0 +1,136 @@
+/* ==================================================
+   CKEditor BASE
+   ================================================== */
+
+.ck-editor__editable {
+  min-height: 420px;
+  padding: 20px;
+  font-size: 16px;
+  line-height: 1.75;
+  background-color: #ffffff;
+  color: #111827;
+}
+
+/* ==================================================
+   DARK MODE – CORE FIX (IMPORTANT)
+   ================================================== */
+
+/* Editor background */
+.dark .ck-editor__editable {
+  background-color: #0f172a !important; /* slate-900 */
+  color: #e5e7eb !important; /* gray-200 */
+}
+
+/* FORCE all text nodes */
+.dark .ck-editor__editable *,
+.dark .ck-content * {
+  color: #e5e7eb !important;
+}
+
+/* ==================================================
+   TOOLBAR – DARK MODE
+   ================================================== */
+
+.dark .ck-toolbar {
+  background-color: #020617 !important; /* slate-950 */
+  border-color: #1e293b !important;
+}
+
+.dark .ck-toolbar button {
+  color: #e5e7eb !important;
+}
+
+.dark .ck-toolbar button:hover {
+  background-color: #1e293b !important;
+}
+
+/* Toolbar radius */
+.ck.ck-editor__top > .ck-toolbar {
+  border-radius: 12px 12px 0 0;
+}
+
+.ck.ck-editor__main > .ck-editor__editable {
+  border-radius: 0 0 12px 12px;
+}
+
+/* ==================================================
+   HEADINGS
+   ================================================== */
+
+.dark .ck-content h1,
+.dark .ck-content h2,
+.dark .ck-content h3,
+.dark .ck-content h4,
+.dark .ck-content h5,
+.dark .ck-content h6 {
+  color: #f9fafb !important;
+}
+
+/* ==================================================
+   PARAGRAPHS & LISTS
+   ================================================== */
+
+.dark .ck-content p,
+.dark .ck-content li {
+  color: #e5e7eb !important;
+}
+
+/* ==================================================
+   LINKS
+   ================================================== */
+
+.dark .ck-content a {
+  color: #60a5fa !important;
+  text-decoration: underline;
+}
+
+/* ==================================================
+   BLOCKQUOTE (QUOTE)
+   ================================================== */
+
+.dark .ck-content blockquote {
+  background-color: #020617 !important;
+  border-left: 4px solid #3b82f6;
+  padding: 14px 18px;
+  margin: 18px 0;
+  border-radius: 8px;
+}
+
+.dark .ck-content blockquote,
+.dark .ck-content blockquote * {
+  color: #e5e7eb !important;
+  font-style: italic;
+}
+
+/* ==================================================
+   CODE BLOCK
+   ================================================== */
+
+.dark .ck-content pre {
+  background-color: #020617 !important;
+  border: 1px solid #1e293b;
+  color: #e5e7eb !important;
+  padding: 16px;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+/* ==================================================
+   TABLES
+   ================================================== */
+
+.dark .ck-content table {
+  border-collapse: collapse;
+}
+
+.dark .ck-content table,
+.dark .ck-content td,
+.dark .ck-content th {
+  border: 1px solid #334155;
+  color: #e5e7eb !important;
+}
+
+.dark .ck-content td,
+.dark .ck-content th {
+  padding: 10px;
+}
