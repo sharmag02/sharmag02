@@ -43,22 +43,22 @@ It features secure authentication, role-based access, real-time content updates,
 ## 📸 Screenshots
 
 ### Homepage
-<img width="1919" height="865" src="https://github.com/user-attachments/assets/a919ef9a-b76c-4bdf-ae70-df1394474a7a" />
+<img width="1919" height="865" alt="Screenshot 2026-01-07 182519" src="https://github.com/user-attachments/assets/fa92634b-e620-44c0-a5e5-05cc7f620a22" />
 
 ### Admin Dashboard
-<img width="1919" height="869" src="https://github.com/user-attachments/assets/89a79336-be0d-4377-a25f-16f9dc207351" />
+<img width="1919" height="869" alt="Screenshot 2026-01-07 182636" src="https://github.com/user-attachments/assets/5b78d64b-0607-4912-b56b-b20bc69480bb" />
 
 ### Blog System
-<img width="1919" height="872" src="https://github.com/user-attachments/assets/815f7507-00ed-4c9e-9f8b-b50dc504e4aa" />
+<img width="1919" height="872" alt="Screenshot 2026-01-07 182743" src="https://github.com/user-attachments/assets/167fa0b0-5cfd-4264-a264-4da1a7a0c425" />
 
 ### Certifications Page
-<img width="1919" height="885" src="https://github.com/user-attachments/assets/8f3ecde7-ea34-484e-b804-6ea6f522c302" />
+<img width="1919" height="885" alt="Screenshot 2026-01-07 182824" src="https://github.com/user-attachments/assets/b486009e-f412-4fd6-a495-74f280686ee1" />
 
 ### Login & Signup
-<img width="1919" height="808" src="https://github.com/user-attachments/assets/05f80f4e-9e32-4c5b-b6e5-d1d37b41ec7f" />
+<img width="1919" height="808" alt="Screenshot 2026-01-07 182917" src="https://github.com/user-attachments/assets/dda88ba1-8db5-45ad-8313-1589a95b1b86" />
 
 ### Password Reset
-<img width="1889" height="821" src="https://github.com/user-attachments/assets/6e50bb70-b4ce-4dc6-8797-f9f86c1ce8c5" />
+<img width="1889" height="821" alt="Screenshot 2026-01-07 182934" src="https://github.com/user-attachments/assets/c51e02ba-49df-457a-8017-85c40f0934e0" />
 
 ---
 
