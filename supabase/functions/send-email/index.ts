@@ -11,13 +11,13 @@ const corsHeaders = {
 
 /* ---------- CLIENTS ---------- */
 
-// Service role → DB + email access
+// Service role client
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-// Anon client → JWT validation
+// For auth validation
 const anonClient = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_ANON_KEY")!
@@ -62,27 +62,27 @@ serve(async (req) => {
     }
 
     /* 👑 ADMIN CHECK */
-    const { data: profile, error: profileErr } = await adminClient
+    const { data: profile } = await adminClient
       .from("profiles")
       .select("is_admin")
       .eq("id", user.id)
       .single();
 
-    if (profileErr || profile?.is_admin !== true) {
+    if (!profile?.is_admin) {
       return new Response("Forbidden: Admin only", {
         status: 403,
         headers: corsHeaders,
       });
     }
 
-    /* ---------- FETCH QUEUE ---------- */
+    /* ---------- FETCH PENDING EMAIL JOBS ---------- */
     const { data: jobs } = await adminClient
       .from("email_queue")
       .select("*")
       .eq("processed", false)
       .limit(5);
 
-    if (!jobs || jobs.length === 0) {
+    if (!jobs?.length) {
       return new Response("No pending emails", { headers: corsHeaders });
     }
 
@@ -92,7 +92,7 @@ serve(async (req) => {
       .select("email")
       .eq("is_active", true);
 
-    if (!subscribers || subscribers.length === 0) {
+    if (!subscribers?.length) {
       return new Response("No subscribers", { headers: corsHeaders });
     }
 
@@ -102,17 +102,116 @@ serve(async (req) => {
         await transporter.sendMail({
           from: `"Gaurav Kumar" <${Deno.env.get("GMAIL_USER")!}>`,
           to: sub.email,
-          subject: `New Blog: ${job.title}`,
+          subject: `📝 New Blog Published: ${job.title}`,
           html: `
-            <h2>${job.title}</h2>
-            <p>${job.excerpt ?? ""}</p>
-            <a href="https://sharmag02.netlify.app/blog/${job.slug}">
-              Read full blog →
-            </a>
+            <div style="
+              font-family: Arial, Helvetica, sans-serif;
+              background-color: #f4f6fb;
+              padding: 30px;
+            ">
+              <div style="
+                max-width: 600px;
+                margin: auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                padding: 28px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+              ">
+
+                <h1 style="
+                  margin: 0 0 12px;
+                  font-size: 26px;
+                  color: #0f172a;
+                ">
+                  ${job.title}
+                </h1>
+
+                <p style="
+                  font-size: 16px;
+                  line-height: 1.6;
+                  color: #334155;
+                  margin-bottom: 26px;
+                ">
+                  ${job.excerpt || "A new blog has been published. Click below to read it."}
+                </p>
+
+                <a
+                  href="${Deno.env.get("SITE_URL")}/blog/${job.slug}"
+                  style="
+                    display: inline-block;
+                    background-color: #2563eb;
+                    color: #ffffff;
+                    text-decoration: none;
+                    padding: 14px 26px;
+                    border-radius: 10px;
+                    font-size: 16px;
+                    font-weight: 600;
+                  "
+                >
+                  📖 Read Full Blog
+                </a>
+
+                <hr style="
+                  margin: 32px 0;
+                  border: none;
+                  border-top: 1px solid #e5e7eb;
+                " />
+
+                <p style="
+                  font-size: 14px;
+                  color: #64748b;
+                  margin-bottom: 14px;
+                ">
+                  Follow me for more tech blogs & updates:
+                </p>
+
+                <a
+                  href="https://www.linkedin.com/in/sharmag02"
+                  style="
+                    display: inline-block;
+                    background-color: #0a66c2;
+                    color: white;
+                    padding: 10px 18px;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    font-size: 14px;
+                    margin-right: 10px;
+                  "
+                >
+                  🔗 LinkedIn
+                </a>
+
+                <a
+                  href="https://github.com/sharmag02"
+                  style="
+                    display: inline-block;
+                    background-color: #111827;
+                    color: white;
+                    padding: 10px 18px;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    font-size: 14px;
+                  "
+                >
+                  💻 GitHub
+                </a>
+
+                <p style="
+                  margin-top: 36px;
+                  font-size: 12px;
+                  color: #94a3b8;
+                ">
+                  You received this email because you subscribed to blog updates.<br />
+                  © ${new Date().getFullYear()} Gaurav Kumar
+                </p>
+
+              </div>
+            </div>
           `,
         });
       }
 
+      // mark job as processed
       await adminClient
         .from("email_queue")
         .update({ processed: true })

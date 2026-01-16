@@ -8,7 +8,7 @@ import {
   Pencil,
   ShieldCheck,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../shared/lib/supabase";
 import { useAuth } from "../../shared/context/AuthContext";
 import { useParams, useNavigate } from "react-router-dom";
@@ -56,6 +56,12 @@ export default function BlogDetail() {
   const [editText, setEditText] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  /* ========= ToC State ========= */
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [toc, setToc] = useState<
+    { id: string; text: string; level: number; index: string }[]
+  >([]);
+
   /* ---------------- LOAD BLOG ---------------- */
 
   useEffect(() => {
@@ -68,7 +74,7 @@ export default function BlogDetail() {
         .from("blogs")
         .select("id,title,content,created_at,likes,profiles(full_name,email)")
         .eq("slug", slug)
-        .eq("published", true) // ✅ IMPORTANT
+        .eq("published", true)
         .maybeSingle();
 
       if (error || !data) {
@@ -83,6 +89,59 @@ export default function BlogDetail() {
 
     loadBlog();
   }, [slug, navigate]);
+
+  /* ----------- PARSE TABLE OF CONTENTS (H1, H2, H3) ---------- */
+  useEffect(() => {
+    if (!blog?.content) return;
+
+    const div = document.createElement("div");
+    div.innerHTML = blog.content;
+
+    let h1 = 0,
+      h2 = 0,
+      h3 = 0;
+
+    const found = Array.from(div.querySelectorAll("h1, h2, h3")).map((el) => {
+      const level = Number(el.tagName.replace("H", ""));
+      const text = el.textContent?.trim() || "";
+      const id = text.toLowerCase().replace(/\s+/g, "-");
+
+      let index = "";
+
+      if (level === 1) {
+        h1++;
+        h2 = 0;
+        h3 = 0;
+        index = `${h1}`;
+      } else if (level === 2) {
+        h2++;
+        h3 = 0;
+        index = `${h1}.${h2}`;
+      } else if (level === 3) {
+        h3++;
+        index = `${h1}.${h2}.${h3}`;
+      }
+
+      return { id, text, level, index };
+    });
+
+    setToc(found);
+  }, [blog]);
+
+  /* ---------- Inject IDs into actual DOM ---------- */
+  useEffect(() => {
+    if (!contentRef.current) return;
+
+    toc.forEach((item) => {
+      const elements = contentRef.current!.querySelectorAll(`h${item.level}`);
+
+      elements.forEach((el) => {
+        if (el.textContent?.trim() === item.text.trim()) {
+          el.setAttribute("id", item.id);
+        }
+      });
+    });
+  }, [toc]);
 
   /* ---------------- LOAD COMMENTS ---------------- */
 
@@ -170,12 +229,12 @@ export default function BlogDetail() {
       {/* Back */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 mb-8 text-slate-600 dark:text-slate-900 hover:text-blue-500"
+        className="flex items-center gap-2 mb-8 text-slate-600 dark:text-slate-300 hover:text-blue-500"
       >
         <ArrowLeft size={18} /> Back
       </button>
 
-      <article className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl p-10">
+      <article className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl p-10 leading-relaxed">
         <h1 className="text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100">
           {blog.title}
         </h1>
@@ -211,9 +270,42 @@ export default function BlogDetail() {
           </button>
         </div>
 
+        {/* TABLE OF CONTENTS */}
+        {toc.length > 0 && (
+          <div className="mb-10 p-5 rounded-xl bg-slate-100 dark:bg-slate-800 shadow">
+            <h3 className="text-xl font-semibold mb-3 text-slate-800 dark:text-white">
+              Table of Contents
+            </h3>
+
+            <ol className="space-y-2 ml-1">
+              {toc.map((item) => (
+                <li
+                  key={item.id}
+                  className={`cursor-pointer hover:text-blue-500 transition ${
+                    item.level === 2
+                      ? "ml-4"
+                      : item.level === 3
+                      ? "ml-8"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    document.getElementById(item.id)?.scrollIntoView({
+                      behavior: "smooth",
+                    })
+                  }
+                >
+                  <span className="font-semibold mr-2">{item.index}</span>
+                  {item.text}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
         {/* CONTENT */}
         <div
-          className="prose prose-slate dark:prose-invert max-w-none"
+          ref={contentRef}
+          className="prose prose-slate dark:prose-invert max-w-none blog-content"
           dangerouslySetInnerHTML={{ __html: blog.content }}
         />
 
@@ -312,9 +404,7 @@ export default function BlogDetail() {
       {deleteId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 p-6 rounded-2xl">
-            <p className="mb-4 dark:text-slate-200">
-              Delete this comment?
-            </p>
+            <p className="mb-4 dark:text-slate-200">Delete this comment?</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeleteId(null)}

@@ -1,41 +1,26 @@
-import { supabase } from './supabase'
+import { supabase } from "./supabase";
 
-export class SupabaseUploadAdapter {
-  loader: any
+export async function uploadToSupabase(file: File): Promise<string> {
+  const ext = file.name.split(".").pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const filePath = `blogs/${fileName}`;
 
-  constructor(loader: any) {
-    this.loader = loader
+  const { error } = await supabase.storage
+    .from("blog_images")
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type,
+    });
+
+  if (error) {
+    console.error(error);
+    throw error;
   }
 
-  async upload() {
-    const file = await this.loader.file
-    const fileName = `${Date.now()}-${file.name}`
+  const { data } = supabase.storage
+    .from("blog_images")
+    .getPublicUrl(filePath);
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from('blog_images')
-      .upload(fileName, file)
-
-    if (error) throw error
-
-    // Get public URL
-    const { publicUrl, error: urlError } = supabase.storage
-      .from('blog_images')
-      .getPublicUrl(fileName)
-
-    if (urlError) throw urlError
-
-    return { default: publicUrl }
-  }
-
-  abort() {
-    // Optional: handle abort
-  }
-}
-
-// CKEditor plugin to attach the adapter
-export function SupabaseUploadAdapterPlugin(editor: any) {
-  editor.plugins.get('FileRepository').createUploadAdapter = (loader: any) => {
-    return new SupabaseUploadAdapter(loader)
-  }
+  return data.publicUrl;
 }

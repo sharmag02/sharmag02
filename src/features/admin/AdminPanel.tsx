@@ -3,7 +3,7 @@ import { Edit, Trash2, Plus } from "lucide-react";
 import { supabase } from "../../shared/lib/supabase";
 
 // Editors
-import { BlogEditor } from "../blog/editor/BlogEditor";
+import   BlogEditor   from "../blog/editor/BlogEditor";
 import ProjectEditor from "../projects/editor/ProjectEditor";
 import SkillEditor from "../skills/editor/SkillEditor";
 import ExperienceEditor from "../experience/editor/ExperienceEditor";

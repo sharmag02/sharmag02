@@ -21,9 +21,6 @@ import { AdminPanel } from "../features/admin/AdminPanel";
 import AuthTabs from "../features/auth/AuthTabs";
 import ForgotPassword from "../features/auth/ForgotPassword";
 import ResetPassword from "../features/auth/ResetPassword";
-import TestEmail from "../TestEmail";
-
-
 
 import ProtectedRoute from "../app/ProtectedRoute";
 import { useAuth } from "../shared/context/AuthContext";
@@ -43,12 +40,10 @@ export default function App() {
 
   return (
     <Routes>
-      {/* ================= PUBLIC ROUTES ================= */}
       <Route path="/auth" element={<AuthTabs />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* ================= APP ROUTES ================= */}
       <Route
         path="/*"
         element={
@@ -89,4 +84,3 @@ export default function App() {
     </Routes>
   );
 }
-
