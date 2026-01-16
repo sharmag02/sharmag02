@@ -3,7 +3,7 @@ import { Edit, Trash2, Plus } from "lucide-react";
 import { supabase } from "../../shared/lib/supabase";
 
 // Editors
-import   BlogEditor   from "../blog/editor/BlogEditor";
+import BlogEditor from "../blog/editor/BlogEditor";
 import ProjectEditor from "../projects/editor/ProjectEditor";
 import SkillEditor from "../skills/editor/SkillEditor";
 import ExperienceEditor from "../experience/editor/ExperienceEditor";
@@ -26,6 +26,7 @@ interface ContentItem {
   content?: string;
   excerpt?: string;
   created_at?: string;
+  status?: string;
   [key: string]: any;
 }
 
@@ -211,15 +212,39 @@ export function AdminPanel() {
               `}
             >
               <div className="flex justify-between items-start gap-4">
+                
+                {/* LEFT SECTION */}
                 <div>
-                  <h3
-                    className={`text-xl font-bold ${
-                      theme === "dark" ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    {item.title}
-                  </h3>
+                  
+                  {/* TITLE + BADGE — UPDATED */}
+                  <div className="flex items-center gap-3">
+                    <h3
+                      className={`text-xl font-bold ${
+                        theme === "dark" ? "text-white" : "text-gray-900"
+                      }`}
+                    >
+                      {item.title}
+                    </h3>
 
+                    {/* BLOG STATUS BADGE */}
+                    {activeType === "blogs" && (
+                      <span
+                        className={`px-3 py-1 text-xs font-semibold rounded-full
+                          ${
+                            item.status === "published"
+                              ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
+                          }
+                        `}
+                      >
+                        {item.status === "published"
+                          ? "Published"
+                          : "Draft"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* DESCRIPTION */}
                   {item.description && (
                     <p
                       className={`mt-1 line-clamp-2 ${

@@ -57,9 +57,13 @@ export default function SkillEditor({
     }
 
     try {
-      skillId
-        ? await updateSkill(skillId, form)
-        : await addSkill(form);
+      if (skillId) {
+        // ❗ FIX: remove id before update
+        const { id, ...cleanData } = form as any;
+        await updateSkill(skillId, cleanData);
+      } else {
+        await addSkill(form);
+      }
 
       onSave();
     } catch (e) {

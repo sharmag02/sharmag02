@@ -5,7 +5,6 @@ import { supabase } from "../../../shared/lib/supabase";
 import { useAuth } from "../../../shared/context/AuthContext";
 import { useTheme } from "../../../shared/context/ThemeContext";
 import slugify from "../../../shared/utils/slugify";
-
 import { extractImagePaths } from "../../../shared/utils/extractImagePaths";
 import { uploadToSupabase } from "../../../shared/lib/SupabaseUploadAdapter";
 
@@ -27,6 +26,7 @@ export default function BlogEditor({ blogId, onSave, onCancel }: BlogEditorProps
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
+  const [status, setStatus] = useState<"draft" | "published">("draft");
 
   const originalContentRef = useRef("");
 
@@ -39,7 +39,7 @@ export default function BlogEditor({ blogId, onSave, onCancel }: BlogEditorProps
 
       const { data } = await supabase
         .from("blogs")
-        .select("title, excerpt, content")
+        .select("title, excerpt, content, status")
         .eq("id", blogId)
         .single();
 
@@ -47,6 +47,7 @@ export default function BlogEditor({ blogId, onSave, onCancel }: BlogEditorProps
         setTitle(data.title);
         setExcerpt(data.excerpt);
         setContent(data.content);
+        setStatus(data.status || "draft");
         originalContentRef.current = data.content;
       }
 
@@ -76,122 +77,180 @@ export default function BlogEditor({ blogId, onSave, onCancel }: BlogEditorProps
     return slug;
   };
 
-  /* ---------------- JODIT CONFIG ---------------- */
-const config = {
-  readonly: false,
-  height: 520,
-  theme: isDark ? "dark" : "default",
+  // 🔗 Auto-embed helper (ONLY for pasted links)
+const getEmbedHTML = (url: string) => {
+  // YouTube
+  const yt = url.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/
+  );
+  if (yt) {
+    return `
+      <iframe
+        width="100%"
+        height="420"
+        src="https://www.youtube.com/embed/${yt[1]}"
+        frameborder="0"
+        allowfullscreen
+      ></iframe>
+    `;
+  }
 
-  toolbarAdaptive: false,
-  toolbarSticky: false,
+  // Google Drive (video / pdf)
+  if (url.includes("drive.google.com")) {
+    const fileId = url.match(/\/d\/([^/]+)/)?.[1];
+    if (fileId) {
+      return `
+        <iframe
+          src="https://drive.google.com/file/d/${fileId}/preview"
+          width="100%"
+          height="500"
+        ></iframe>
+      `;
+    }
+  }
 
-  buttons: [
-    "bold",
-    "italic",
-    "underline",
-    "strikethrough",
-    "|",
-    "ul",
-    "ol",
-    "|",
-    "fontsize",
-    "brush",
-    "paragraph",
-    "align",
-    "|",
-    "link",
-     "uploadImage",   // 👈 ADD THIS
-    "video",
-    "file",
-    "|",
-    "table",
-    "hr",
-   
-    "code",
-    "|",
-    "undo",
-    "redo",
-    "preview",
-    "fullsize",
-    
-    
-  ],
+  // Image links
+  if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+    return `<img src="${url}" alt="" />`;
+  }
 
-  controls: {
-    uploadImage: {
-      icon: "image",
-      tooltip: "Upload Image",
-      exec: async (editor: any) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
+  // PDF links
+  if (url.match(/\.pdf$/i)) {
+    return `<iframe src="${url}" width="100%" height="500"></iframe>`;
+  }
 
-        input.onchange = async () => {
-          const file = input.files?.[0];
-          if (!file) return;
-
-          try {
-            const url = await uploadToSupabase(file);
-            editor.selection.insertImage(url);
-          } catch (err) {
-            console.error(err);
-            alert("Upload failed");
-          }
-        };
-
-        input.click();
-      },
-    },
-  },
+  // Fallback → normal link
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
 };
 
 
+  /* ---------------- JODIT CONFIG ---------------- */
+  const config = {
+    readonly: false,
+    height: 520,
+    theme: isDark ? "dark" : "default",
+    toolbarAdaptive: false,
+    toolbarSticky: false,
 
-  /* ---------------- SAVE BLOG ---------------- */
-  const handleSubmit = async () => {
+    buttons: [
+      "bold",
+      "italic",
+      "underline",
+      "strikethrough",
+      "|",
+      "ul",
+      "ol",
+      "|",
+      "fontsize",
+      "brush",
+      "paragraph",
+      "align",
+      "|",
+      "link",
+      "uploadImage",
+      "video",
+      "file",
+      "|",
+      "table",
+      "hr",
+      "|",
+      "undo",
+      "redo",
+      "preview",
+      "fullsize",
+    ],
+
+    controls: {
+      uploadImage: {
+        icon: "image",
+        tooltip: "Upload Image",
+        exec: async (editor: any) => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "image/*";
+
+          input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+
+            try {
+              const url = await uploadToSupabase(file);
+              editor.selection.insertImage(url);
+            } catch (err) {
+              console.error(err);
+              alert("Upload failed");
+            }
+          };
+
+          input.click();
+        },
+      },
+    },
+  };
+
+  /* ---------------- SAVE BLOG (DRAFT / PUBLISH) ---------------- */
+  const handleSave = async (saveStatus: "draft" | "published") => {
     if (!title.trim() || !user?.id) return;
     setLoading(true);
 
     try {
-      // extract old vs new images
+      // Remove deleted images
       const oldImgs = extractImagePaths(originalContentRef.current);
       const newImgs = extractImagePaths(content);
-
       const removed = oldImgs.filter((img) => !newImgs.includes(img));
 
       if (removed.length > 0) {
         await supabase.storage.from("blog_images").remove(removed);
       }
 
+      let finalSlug: string | undefined;
+
       if (isEditMode && blogId) {
+        // 🔥 FETCH EXISTING SLUG (CRITICAL FIX)
+        const { data } = await supabase
+          .from("blogs")
+          .select("slug")
+          .eq("id", blogId)
+          .single();
+
+        finalSlug = data?.slug;
+
         await supabase
           .from("blogs")
           .update({
             title,
             excerpt,
             content,
+            status: saveStatus,
             updated_at: new Date().toISOString(),
           })
           .eq("id", blogId);
       } else {
-        const slug = await generateUniqueSlug(title);
+        finalSlug = await generateUniqueSlug(title);
 
         await supabase.from("blogs").insert({
           title,
           excerpt,
           content,
-          slug,
+          slug: finalSlug,
           author_id: user.id,
-          published: true,
+          status: saveStatus,
         });
+      }
 
-        await supabase.from("email_queue").insert({
+      /* ---------- EMAIL QUEUE (PUBLISH ONLY) ---------- */
+      if (saveStatus === "published" && finalSlug) {
+        const { error } = await supabase.from("email_queue").insert({
           title,
           excerpt,
-          slug,
+          slug: finalSlug,
         });
 
-        await supabase.functions.invoke("send-email", { body: {} });
+        if (error) {
+          console.error("Email queue insert failed:", error);
+        } else {
+          await supabase.functions.invoke("send-email", { body: {} });
+        }
       }
 
       onSave();
@@ -233,33 +292,34 @@ const config = {
         />
 
         <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700 jodit-theme">
-  <JoditEditor
-    ref={editorRef}
-    value={content}
-    config={config}
-    onBlur={(value) => setContent(value)}
-  />
-</div>
-
+          <JoditEditor
+            ref={editorRef}
+            value={content}
+            config={config}
+            onBlur={(value) => setContent(value)}
+          />
         </div>
+      </div>
 
-          <div className="px-8 py-5 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-300 dark:border-slate-700 flex justify-end">
+      {/* FOOTER */}
+      <div className="px-8 py-5 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-300 dark:border-slate-700 flex justify-end gap-3">
         <button
-          onClick={handleSubmit}
+          onClick={() => handleSave("draft")}
           disabled={loading}
-          className="
-            flex items-center gap-2 px-6 py-3
-            text-white bg-blue-600 hover:bg-blue-700
-            dark:bg-blue-500 dark:hover:bg-blue-400
-            rounded-xl font-medium text-lg shadow-sm
-            transition disabled:opacity-50
-          "
+          className="px-5 py-3 rounded-xl bg-gray-500 hover:bg-gray-600 text-white font-medium transition disabled:opacity-50"
+        >
+          Save Draft
+        </button>
+
+        <button
+          onClick={() => handleSave("published")}
+          disabled={loading}
+          className="flex items-center gap-2 px-6 py-3 text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 rounded-xl font-medium text-lg shadow-sm transition disabled:opacity-50"
         >
           <Save size={20} />
-          {loading ? "Saving…" : isEditMode ? "Update Blog" : "Publish Blog"}
+          {loading ? "Saving…" : isEditMode ? "Update & Publish" : "Publish Blog"}
         </button>
-        </div>
-      
+      </div>
     </div>
   );
 }

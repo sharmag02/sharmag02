@@ -107,11 +107,21 @@ export function CertificationEditor({ certId, onSave, onCancel }: Props) {
       return;
     }
 
-    certId
-      ? await updateCertification(certId, form)
-      : await addCertification(form);
+    try {
+      if (certId) {
+        // ❗ FIX: Remove id before update
+        const { id, ...cleanData } = form;
 
-    onSave();
+        await updateCertification(certId, cleanData);
+      } else {
+        await addCertification(form);
+      }
+
+      onSave();
+    } catch (err) {
+      console.error("Update certification error:", err);
+      alert("Something went wrong while saving");
+    }
   };
 
   const inputBase = isDark

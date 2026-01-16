@@ -1,72 +1,76 @@
-/* ================= BLOG CONTENT FIX ================= */
-/* ================= JODIT EDITOR THEME ================= */
+/* -------------------------------------------- */
+/*  PREMIUM DARK MODE THEME FOR JODIT EDITOR    */
+/* -------------------------------------------- */
 
-/* Editor background (TEXT AREA) */
 .dark .jodit-theme .jodit-wysiwyg {
-  background-color: #707f9e !important; /* deep navy */
-  color: #feffff !important;
-  caret-color: #38bdf8; /* cursor */
+  background-color: #0f172a !important; /* slate-900 */
+  color: #e2e8f0 !important; /* text-slate-200 */
+  caret-color: #3b82f6 !important; /* blue-500 cursor */
 }
 
 /* Placeholder text */
 .dark .jodit-theme .jodit-placeholder {
-  color: #2c10e5 !important;
+  color: #64748b !important; /* slate-500 */
 }
 
 /* Toolbar background */
 .dark .jodit-theme .jodit-toolbar__box {
-  background-color: #a683a7 !important; /* slate-950 */
-  border-bottom: 1px solid #4970ae;
+  background-color: #1e293b !important; /* slate-800 */
+  border-bottom: 1px solid #334155 !important; /* slate-700 */
 }
 
 /* Toolbar buttons */
 .dark .jodit-theme .jodit-toolbar-button {
-  color: #667bc1 !important;
+  color: #cbd5e1 !important; /* slate-300 */
 }
 
+/* Toolbar button hover */
 .dark .jodit-theme .jodit-toolbar-button:hover {
-  background-color: #00da91 !important;
+  background-color: #334155 !important; /* slate-700 */
+  color: #ffffff !important;
 }
 
 /* Active toolbar button */
 .dark .jodit-theme .jodit-toolbar-button.jodit-active {
-  background-color: #2563eb !important;
+  background-color: #2563eb !important; /* blue-600 */
   color: white !important;
 }
 
 /* Editor container */
 .dark .jodit-theme .jodit-container {
-  background-color: #0b1220 !important;
-  border-color: #1e293b !important;
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
 }
 
-/* Status bar (bottom bar) */
+/* Status bar */
 .dark .jodit-theme .jodit-status-bar {
-  background-color: #020617 !important;
+  background-color: #1e293b !important;
   color: #94a3b8 !important;
-  border-top: 1px solid #1e293b;
+  border-top: 1px solid #334155;
 }
 
-/* Code blocks INSIDE editor */
+/* Code block */
 .dark .jodit-theme .jodit-wysiwyg pre {
-  background-color: #020617 !important;
-  color: #e5e7eb !important;
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
   border-radius: 0.75rem;
   padding: 1rem;
+  border: 1px solid #334155 !important;
 }
 
 /* Inline code */
 .dark .jodit-theme .jodit-wysiwyg code {
-  background-color: #1e293b !important;
-  color: #38bdf8 !important;
+  background-color: #334155 !important;
+  color: #60a5fa !important; /* blue-400 */
   padding: 0.2rem 0.4rem;
   border-radius: 0.375rem;
 }
 
-/* Remove ugly inner gray */
+/* Remove inner gray */
 .jodit-workplace {
   background: transparent !important;
 }
+
 
 /* Code block */
 .blog-content pre {
