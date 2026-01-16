@@ -77,51 +77,7 @@ export default function BlogEditor({ blogId, onSave, onCancel }: BlogEditorProps
     return slug;
   };
 
-  // 🔗 Auto-embed helper (ONLY for pasted links)
-const getEmbedHTML = (url: string) => {
-  // YouTube
-  const yt = url.match(
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/
-  );
-  if (yt) {
-    return `
-      <iframe
-        width="100%"
-        height="420"
-        src="https://www.youtube.com/embed/${yt[1]}"
-        frameborder="0"
-        allowfullscreen
-      ></iframe>
-    `;
-  }
 
-  // Google Drive (video / pdf)
-  if (url.includes("drive.google.com")) {
-    const fileId = url.match(/\/d\/([^/]+)/)?.[1];
-    if (fileId) {
-      return `
-        <iframe
-          src="https://drive.google.com/file/d/${fileId}/preview"
-          width="100%"
-          height="500"
-        ></iframe>
-      `;
-    }
-  }
-
-  // Image links
-  if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-    return `<img src="${url}" alt="" />`;
-  }
-
-  // PDF links
-  if (url.match(/\.pdf$/i)) {
-    return `<iframe src="${url}" width="100%" height="500"></iframe>`;
-  }
-
-  // Fallback → normal link
-  return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-};
 
 
   /* ---------------- JODIT CONFIG ---------------- */
@@ -189,78 +145,80 @@ const getEmbedHTML = (url: string) => {
   };
 
   /* ---------------- SAVE BLOG (DRAFT / PUBLISH) ---------------- */
-  const handleSave = async (saveStatus: "draft" | "published") => {
-    if (!title.trim() || !user?.id) return;
-    setLoading(true);
+ /* ---------------- SAVE BLOG (DRAFT / PUBLISH) ---------------- */
+const handleSave = async (saveStatus: "draft" | "published") => {
+  if (!title.trim() || !user?.id) return;
+  setLoading(true);
 
-    try {
-      // Remove deleted images
-      const oldImgs = extractImagePaths(originalContentRef.current);
-      const newImgs = extractImagePaths(content);
-      const removed = oldImgs.filter((img) => !newImgs.includes(img));
+  try {
+    // Remove deleted images
+    const oldImgs = extractImagePaths(originalContentRef.current);
+    const newImgs = extractImagePaths(content);
+    const removed = oldImgs.filter((img) => !newImgs.includes(img));
 
-      if (removed.length > 0) {
-        await supabase.storage.from("blog_images").remove(removed);
-      }
+    if (removed.length > 0) {
+      await supabase.storage.from("blog_images").remove(removed);
+    }
 
-      let finalSlug: string | undefined;
+    let finalSlug: string | undefined;
 
-      if (isEditMode && blogId) {
-        // 🔥 FETCH EXISTING SLUG (CRITICAL FIX)
-        const { data } = await supabase
-          .from("blogs")
-          .select("slug")
-          .eq("id", blogId)
-          .single();
+    if (isEditMode && blogId) {
+      // Fetch existing slug
+      const { data } = await supabase
+        .from("blogs")
+        .select("slug")
+        .eq("id", blogId)
+        .single();
 
-        finalSlug = data?.slug;
+      finalSlug = data?.slug;
 
-        await supabase
-          .from("blogs")
-          .update({
-            title,
-            excerpt,
-            content,
-            status: saveStatus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", blogId);
-      } else {
-        finalSlug = await generateUniqueSlug(title);
-
-        await supabase.from("blogs").insert({
+      await supabase
+        .from("blogs")
+        .update({
           title,
           excerpt,
           content,
-          slug: finalSlug,
-          author_id: user.id,
           status: saveStatus,
-        });
-      }
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", blogId);
+    } else {
+      finalSlug = await generateUniqueSlug(title);
 
-      /* ---------- EMAIL QUEUE (PUBLISH ONLY) ---------- */
-      if (saveStatus === "published" && finalSlug) {
-        const { error } = await supabase.from("email_queue").insert({
-          title,
-          excerpt,
-          slug: finalSlug,
-        });
-
-        if (error) {
-          console.error("Email queue insert failed:", error);
-        } else {
-          await supabase.functions.invoke("send-email", { body: {} });
-        }
-      }
-
-      onSave();
-    } catch (err) {
-      console.error(err);
-      alert("Something went wrong while saving.");
+      await supabase.from("blogs").insert({
+        title,
+        excerpt,
+        content,
+        slug: finalSlug,
+        author_id: user.id,
+        status: saveStatus,
+      });
     }
 
-    setLoading(false);
-  };
+    /* ---------- EMAIL WHEN FIRST TIME PUBLISHED ---------- */
+    if (saveStatus === "published" && finalSlug && !isEditMode) {
+      const { error } = await supabase.from("email_queue").insert({
+        title,
+        excerpt,
+        slug: finalSlug,
+      });
+
+      if (error) {
+        console.error("Email queue insert failed:", error);
+      } else {
+        await supabase.functions.invoke("send-email", { body: {} });
+      }
+    }
+
+    onSave();
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong while saving.");
+  }
+
+  setLoading(false);
+};
+
 
   /* ---------------- UI ---------------- */
   return (
