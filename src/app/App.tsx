@@ -16,7 +16,7 @@ import { Contact } from "../features/sections/Contact";
 
 import { BlogList } from "../features/blog/BlogList";
 import BlogDetail from "../features/blog/BlogDetail";
-import { AdminPanel } from "../features/admin/AdminPanel";
+import  AdminPanel  from "../features/admin/AdminPanel";
 
 import AuthTabs from "../features/auth/AuthTabs";
 import ForgotPassword from "../features/auth/ForgotPassword";
@@ -24,6 +24,11 @@ import ResetPassword from "../features/auth/ResetPassword";
 
 import ProtectedRoute from "../app/ProtectedRoute";
 import { useAuth } from "../shared/context/AuthContext";
+
+import CommunityDashboard from "../features/community/CommunityDashboard";
+
+/* ❗ FIXED IMPORT — default export */
+import CommunityBlogDetail from "../features/community/CommunityBlogDetail";
 
 export default function App() {
   const { profile, loading } = useAuth();
@@ -40,10 +45,12 @@ export default function App() {
 
   return (
     <Routes>
+      {/* AUTH ROUTES */}
       <Route path="/auth" element={<AuthTabs />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
+      {/* MAIN APP */}
       <Route
         path="/*"
         element={
@@ -58,10 +65,27 @@ export default function App() {
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/skills" element={<Skills />} />
                 <Route path="/certifications" element={<Certifications />} />
+
+                {/* PUBLIC BLOGS */}
                 <Route path="/blog" element={<BlogList />} />
                 <Route path="/blog/:slug" element={<BlogDetail />} />
+
+                {/* COMMUNITY BLOG DETAIL — FIXED */}
+                <Route path="/community-blog/:slug" element={<CommunityBlogDetail />} />
+
                 <Route path="/contact" element={<Contact />} />
 
+                {/* COMMUNITY DASHBOARD (PROTECTED) */}
+                <Route
+                  path="/community/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <CommunityDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* ADMIN */}
                 {profile?.is_admin && (
                   <Route
                     path="/admin"
@@ -73,6 +97,7 @@ export default function App() {
                   />
                 )}
 
+                {/* FALLBACK */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
 

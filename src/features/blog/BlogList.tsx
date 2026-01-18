@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../shared/lib/supabase";
-import { Calendar, User, BookOpen } from "lucide-react";
+import { Calendar, User, BookOpen, PenLine } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { NextPageArrow } from "../../shared/components/NextPageArrow";
 import { BlogSubscribe } from "../blog/BlogSubscribe";
+import { useAuth } from "../../shared/context/AuthContext";
 
-interface BlogWithAuthor {
-  id: string; // ✅ UUID FIX
+interface BaseBlog {
+  id: string;
   title: string;
   content: string;
   slug: string;
   created_at: string;
-  profiles: {
-    full_name: string | null;
-    email: string;
-  } | null;
+  excerpt?: string;
+  author_name?: string;
+  type: "blog" | "community";
 }
 
 const BLOGS_PER_PAGE = 4;
@@ -28,7 +28,9 @@ const getTextPreview = (html: string, length = 160) => {
 };
 
 export function BlogList() {
-  const [blogs, setBlogs] = useState<BlogWithAuthor[]>([]);
+  const { user, profile } = useAuth(); // ✅ profile added
+
+  const [blogs, setBlogs] = useState<BaseBlog[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalBlogs, setTotalBlogs] = useState(0);
 
@@ -40,20 +42,12 @@ export function BlogList() {
   const loadBlogs = async (page: number) => {
     setLoading(true);
 
-    const from = (page - 1) * BLOGS_PER_PAGE;
-    const to = from + BLOGS_PER_PAGE - 1;
-
     try {
-      // ✅ COUNT (RLS SAFE)
-      const { count } = await supabase
-        .from("blogs")
-        .select("*", { count: "exact", head: true })
-        .eq("published", true);
+      const from = (page - 1) * BLOGS_PER_PAGE;
+      const to = from + BLOGS_PER_PAGE - 1;
 
-      setTotalBlogs(count ?? 0);
-
-      // ✅ PAGINATED FETCH
-      const { data, error } = await supabase
+      /* ---------- NORMAL BLOGS ---------- */
+      const { data: normalBlogs } = await supabase
         .from("blogs")
         .select(`
           id,
@@ -61,17 +55,61 @@ export function BlogList() {
           content,
           slug,
           created_at,
-          profiles (
-            full_name,
-            email
-          )
+          excerpt,
+          profiles(full_name, email)
         `)
         .eq("published", true)
-        .order("created_at", { ascending: false })
-        .range(from, to);
+        .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setBlogs(data || []);
+      const mappedNormalBlogs: BaseBlog[] =
+        normalBlogs?.map((b) => ({
+          id: b.id,
+          title: b.title,
+          content: b.content,
+          slug: `/blog/${b.slug}`,
+          created_at: b.created_at,
+          excerpt: b.excerpt,
+          author_name: b.profiles?.full_name || b.profiles?.email,
+          type: "blog",
+        })) || [];
+
+      /* ---------- COMMUNITY BLOGS ---------- */
+      const { data: communityBlogs } = await supabase
+        .from("community_blogs")
+        .select(`
+          id,
+          title,
+          content,
+          slug,
+          excerpt,
+          created_at,
+          profiles:profiles!community_blogs_author_id_fkey(full_name, email)
+        `)
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+
+      const mappedCommunityBlogs: BaseBlog[] =
+        communityBlogs?.map((b) => ({
+          id: b.id,
+          title: b.title,
+          content: b.content,
+          slug: `/community-blog/${b.slug}`,
+          created_at: b.created_at,
+          excerpt: b.excerpt || "",
+          author_name:
+            b.profiles?.full_name || b.profiles?.email || "Community User",
+          type: "community",
+        })) || [];
+
+      /* ---------- MERGE + SORT ---------- */
+      const allBlogs = [...mappedNormalBlogs, ...mappedCommunityBlogs].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime()
+      );
+
+      setTotalBlogs(allBlogs.length);
+      setBlogs(allBlogs.slice(from, to + 1));
     } catch (err) {
       console.error("Error loading blogs:", err);
     } finally {
@@ -85,16 +123,30 @@ export function BlogList() {
 
   const totalPages = Math.ceil(totalBlogs / BLOGS_PER_PAGE);
 
+  /* ---------- SUBMIT BLOG BUTTON ---------- */
+  const handleSubmitBlog = () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    // ✅ ADMIN → admin panel
+    if (profile?.is_admin) {
+      navigate("/admin");
+      return;
+    }
+
+    // ✅ NORMAL USER → community dashboard
+    navigate("/community/dashboard");
+  };
+
   /* ---------- UI ---------- */
   return (
-    <section
-      id="blog"
-      className="relative py-10 px-6 bg-slate-50 dark:bg-gray-900 min-h-screen"
-    >
+    <section className="relative py-10 px-6 bg-slate-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-6xl mx-auto">
         {/* HEADER */}
         <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold dark:text-white mb-4">
             Latest Blogs
           </h2>
           <div className="w-24 h-1 mx-auto bg-gradient-to-r from-blue-500 to-teal-500 rounded-full mb-4" />
@@ -127,11 +179,17 @@ export function BlogList() {
               {blogs.map((blog) => (
                 <article
                   key={blog.id}
-                  onClick={() => navigate(`/blog/${blog.slug}`)}
+                  onClick={() => navigate(blog.slug)}
                   className="group relative p-1 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-[0_0_25px_#3b82f6]"
                 >
                   <div className="rounded-2xl p-6 bg-white dark:bg-gray-800 transform group-hover:scale-105 transition flex flex-col h-full">
-                    <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600">
+                    {blog.type === "community" && (
+                      <span className="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-700 mb-2 self-start">
+                        Community Blog
+                      </span>
+                    )}
+
+                    <h3 className="text-xl md:text-2xl font-bold dark:text-white mb-2 group-hover:text-blue-600">
                       {blog.title}
                     </h3>
 
@@ -142,9 +200,7 @@ export function BlogList() {
                     <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 space-y-1">
                       <div className="flex items-center gap-2">
                         <User size={14} />
-                        {blog.profiles?.full_name ||
-                          blog.profiles?.email ||
-                          "Anonymous"}
+                        {blog.author_name}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -185,7 +241,28 @@ export function BlogList() {
         )}
       </div>
 
-      <BlogSubscribe />
+      {/* FOOTER BUTTONS */}
+      <div className="flex flex-col md:flex-row justify-center items-center gap-6 mt-20 mb-10">
+        <BlogSubscribe />
+
+        <button
+          onClick={handleSubmitBlog}
+          className="
+            px-8 py-3 rounded-xl
+            bg-blue-600 text-white
+            shadow-lg
+            flex items-center gap-2
+            hover:bg-blue-700
+            hover:scale-105
+            hover:shadow-[0_0_20px_#2563eb]
+            transition-all duration-300
+          "
+        >
+          <PenLine size={20} />
+          Submit your blog
+        </button>
+      </div>
+
       <NextPageArrow />
     </section>
   );
