@@ -68,49 +68,45 @@ export default function BlogDetail() {
 
   /* ---------------- LOAD BLOG + COAUTHORS ---------------- */
 
-  useEffect(() => {
-    if (!slug) return;
+ /* ---------------- LOAD COMMUNITY BLOG + COAUTHORS ---------------- */
+useEffect(() => {
+  if (!slug) return;
 
-    const loadBlog = async () => {
-      setLoading(true);
+  const loadBlog = async () => {
+    setLoading(true);
 
-      const { data, error } = await supabase
-        .from("blogs")
-        .select(`
-          id,
-          title,
-          content,
-          created_at,
-          published_at,
-          likes,
-          profiles(full_name, email)
-        `)
-        .eq("slug", slug)
-        .eq("published", true)
-        .maybeSingle(); // ⭐ FIXED
+    const { data, error } = await supabase
+      .from("community_blogs")
+      .select(`
+        *,
+        profiles:profiles!community_blogs_author_id_fkey(full_name,email)
+      `)
+      .eq("slug", slug)
+      .eq("status", "approved")   // ✔ correct filter
+      .maybeSingle();
 
-      if (error || !data) {
-        navigate("/blog");
-        return;
-      }
+    if (error || !data) {
+      navigate("/community-blog");  // ✔ correct redirect
+      return;
+    }
 
-      setBlog(data);
-      setLikes(data.likes ?? 0);
+    setBlog(data);
+    setLikes(data.likes ?? 0);
 
-      // ⭐ Load coauthors for normal blog
-      const { data: coauthorList } = await supabase
-        .from("blog_collaborators")
-        .select(`profiles(full_name,email)`)
-        .eq("blog_id", data.id)
-        .eq("blog_type", "normal");
+    // Load coauthors
+    const { data: coauthorList } = await supabase
+      .from("blog_collaborators")
+      .select(`profiles(full_name,email)`)
+      .eq("blog_id", data.id)
+      .eq("blog_type", "community");   // ✔ correct blog type
 
-      setCoauthors(coauthorList || []);
+    setCoauthors(coauthorList || []);
+    setLoading(false);
+  };
 
-      setLoading(false);
-    };
+  loadBlog();
+}, [slug, navigate]);
 
-    loadBlog();
-  }, [slug, navigate]);
 
   /* ---------------- LOAD COMMENTS ---------------- */
 

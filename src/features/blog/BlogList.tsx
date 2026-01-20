@@ -16,7 +16,7 @@ interface BaseBlog {
   excerpt?: string;
   author_name?: string;
   type: "blog" | "community";
-  coauthors?: string[];   // ⭐ ADDED
+  coauthors?: string[];
 }
 
 const BLOGS_PER_PAGE = 4;
@@ -47,9 +47,9 @@ export function BlogList() {
       const from = (page - 1) * BLOGS_PER_PAGE;
       const to = from + BLOGS_PER_PAGE - 1;
 
-      /* ------------------------------------------------------------------
-         FETCH NORMAL BLOGS
-      ------------------------------------------------------------------ */
+      /* --------------------------------------------------------------
+         1️⃣ FETCH NORMAL BLOGS WITH AUTHOR
+      -------------------------------------------------------------- */
       const { data: normalBlogs } = await supabase
         .from("blogs")
         .select(`
@@ -59,7 +59,7 @@ export function BlogList() {
           slug,
           created_at,
           excerpt,
-          profiles(full_name, email)
+          profiles:profiles!blogs_author_id_fkey(full_name, email)
         `)
         .eq("published", true)
         .order("created_at", { ascending: false });
@@ -74,12 +74,38 @@ export function BlogList() {
           excerpt: b.excerpt,
           author_name: b.profiles?.full_name || b.profiles?.email,
           type: "blog",
-          coauthors: [], // ⭐ No co-authors for normal blogs
         })) || [];
 
-      /* ------------------------------------------------------------------
-         FETCH COMMUNITY BLOGS
-      ------------------------------------------------------------------ */
+      /* --------------------------------------------------------------
+         2️⃣ FETCH CO-AUTHORS FOR NORMAL BLOGS
+      -------------------------------------------------------------- */
+      const normalIds = mappedNormalBlogs.map((b) => b.id);
+
+      const { data: blogCoauthorData } = await supabase
+        .from("blog_collaborators")
+        .select(`
+          blog_id,
+          profiles(full_name,email)
+        `)
+        .in("blog_id", normalIds)
+        .eq("blog_type", "blog");
+
+      const normalBlogsWithCoauthors = mappedNormalBlogs.map((blog) => {
+        const matched = (blogCoauthorData || []).filter(
+          (c) => c.blog_id === blog.id
+        );
+
+        return {
+          ...blog,
+          coauthors: matched.map(
+            (x) => x.profiles?.full_name || x.profiles?.email
+          ),
+        };
+      });
+
+      /* --------------------------------------------------------------
+         3️⃣ FETCH COMMUNITY BLOGS WITH AUTHOR
+      -------------------------------------------------------------- */
       const { data: communityBlogs } = await supabase
         .from("community_blogs")
         .select(`
@@ -101,25 +127,27 @@ export function BlogList() {
           content: b.content,
           slug: `/community-blog/${b.slug}`,
           created_at: b.created_at,
-          excerpt: b.excerpt || "",
-          author_name:
-            b.profiles?.full_name || b.profiles?.email || "Community User",
+          excerpt: b.excerpt,
+          author_name: b.profiles?.full_name || b.profiles?.email,
           type: "community",
         })) || [];
 
-      /* ------------------------------------------------------------------
-         ⭐ FETCH CO-AUTHORS FOR COMMUNITY BLOGS
-      ------------------------------------------------------------------ */
+      /* --------------------------------------------------------------
+         4️⃣ FETCH CO-AUTHORS FOR COMMUNITY BLOGS
+      -------------------------------------------------------------- */
       const communityIds = mappedCommunityBlogs.map((b) => b.id);
 
-      const { data: coauthorData } = await supabase
+      const { data: communityCoauthorData } = await supabase
         .from("blog_collaborators")
-        .select(`blog_id, profiles(full_name,email)`)
+        .select(`
+          blog_id,
+          profiles(full_name,email)
+        `)
         .in("blog_id", communityIds)
         .eq("blog_type", "community");
 
       const communityBlogsWithCoauthors = mappedCommunityBlogs.map((blog) => {
-        const matched = (coauthorData || []).filter(
+        const matched = (communityCoauthorData || []).filter(
           (c) => c.blog_id === blog.id
         );
 
@@ -131,11 +159,10 @@ export function BlogList() {
         };
       });
 
-      /* ---------- MERGE ALL BLOGS ---------- */
-      const allBlogs = [
-        ...mappedNormalBlogs,
-        ...communityBlogsWithCoauthors,
-      ].sort(
+      /* --------------------------------------------------------------
+         5️⃣ MERGE BOTH LISTS AND SORT BY DATE
+      -------------------------------------------------------------- */
+      const allBlogs = [...normalBlogsWithCoauthors, ...communityBlogsWithCoauthors].sort(
         (a, b) =>
           new Date(b.created_at).getTime() -
           new Date(a.created_at).getTime()
@@ -162,12 +189,10 @@ export function BlogList() {
       navigate("/auth");
       return;
     }
-
     if (profile?.is_admin) {
       navigate("/admin");
       return;
     }
-
     navigate("/community/dashboard");
   };
 
@@ -175,7 +200,6 @@ export function BlogList() {
   return (
     <section className="relative py-10 px-6 bg-slate-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-6xl mx-auto">
-
         {/* HEADER */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold dark:text-white mb-4">
@@ -235,8 +259,6 @@ export function BlogList() {
 
                     {/* AUTHOR + DATE */}
                     <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 space-y-1">
-
-                      {/* AUTHOR + ⭐ CO-AUTHORS */}
                       <div className="flex items-center gap-2">
                         <User size={14} />
                         <span>
@@ -250,7 +272,6 @@ export function BlogList() {
                         </span>
                       </div>
 
-                      {/* DATE */}
                       <div className="flex items-center gap-2">
                         <Calendar size={14} />
                         {new Date(blog.created_at).toLocaleDateString("en-IN")}

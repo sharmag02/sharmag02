@@ -52,6 +52,8 @@ export default function BlogDetail() {
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
 
+    const [coauthors, setCoauthors] = useState<any[]>([]);
+
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -64,31 +66,44 @@ export default function BlogDetail() {
 
   /* ---------------- LOAD BLOG ---------------- */
 
-  useEffect(() => {
-    if (!slug) return;
+  /* ---------------- LOAD COMMUNITY BLOG + COAUTHORS ---------------- */
+useEffect(() => {
+  if (!slug) return;
 
-    const loadBlog = async () => {
-      setLoading(true);
+  const loadBlog = async () => {
+    setLoading(true);
 
-      const { data, error } = await supabase
-        .from("blogs")
-        .select("id,title,content,created_at,likes,profiles(full_name,email)")
-        .eq("slug", slug)
-        .eq("published", true)
-        .maybeSingle();
+    const { data, error } = await supabase
+      .from("blogs")
+      .select(`
+        *,
+        profiles:profiles!blogs_author_id_fkey(full_name,email)
+      `)
+      .eq("slug", slug)
+      .eq("published", true) // ✔ correct filter
+      .maybeSingle();
 
-      if (error || !data) {
-        navigate("/blog");
-        return;
-      }
+    if (error || !data) {
+      navigate("/blog");  // ✔ correct redirect
+      return;
+    }
 
-      setBlog(data);
-      setLikes(data.likes || 0);
-      setLoading(false);
-    };
+    setBlog(data);
+    setLikes(data.likes ?? 0);
 
-    loadBlog();
-  }, [slug, navigate]);
+    // Load coauthors
+    const { data: coauthorList } = await supabase
+      .from("blog_collaborators")
+      .select(`profiles(full_name,email)`)
+      .eq("blog_id", data.id)
+      .eq("blog_type", "blog");   // ✔ correct blog type
+
+    setCoauthors(coauthorList || []);
+    setLoading(false);
+  };
+
+  loadBlog();
+}, [slug, navigate]);
 
   /* ----------- PARSE TABLE OF CONTENTS (H1, H2, H3) ---------- */
   useEffect(() => {
@@ -222,6 +237,15 @@ export default function BlogDetail() {
 
   if (!blog) return null;
 
+  /* ---------------- AUTHOR INFO ---------------- */
+
+const authorName =
+  blog?.profiles?.full_name || blog?.profiles?.email || "Author";
+
+const coauthorNames = coauthors
+  .map((c) => c.profiles?.full_name || c.profiles?.email)
+  .filter(Boolean);
+
   /* ---------------- UI ---------------- */
 
   return (
@@ -239,6 +263,51 @@ export default function BlogDetail() {
           {blog.title}
         </h1>
 
+ {/* ⭐ AUTHOR + COAUTHORS */}
+        <div className="flex items-center gap-4 mb-10 pb-6 border-b border-slate-200 dark:border-slate-800">
+          {/* Avatars */}
+          <div className="flex -space-x-3">
+            {/* Main Author */}
+            <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-semibold ring-2 ring-white dark:ring-slate-900">
+              {authorName[0]?.toUpperCase()}
+            </div>
+
+            {/* Coauthors */}
+            {coauthorNames.slice(0, 3).map((name, i) => (
+              <div
+                key={i}
+                className="w-12 h-12 rounded-full bg-slate-400 text-white flex items-center justify-center text-lg font-semibold ring-2 ring-white dark:ring-slate-900"
+              >
+                {name[0]?.toUpperCase()}
+              </div>
+            ))}
+          </div>
+
+          {/* Text */}
+          <div className="flex flex-col">
+            <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Written by
+            </span>
+
+            <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              {authorName}
+              {coauthorNames.length > 0 && (
+                <span className="font-normal text-slate-600 dark:text-slate-400">
+                  {" "}· with {coauthorNames.join(", ")}
+                </span>
+              )}
+            </span>
+
+            <span className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              <Calendar size={14} />
+              Published on{" "}
+              {new Date(blog.published_at || blog.created_at).toLocaleDateString(
+                "en-IN",
+                { day: "numeric", month: "short", year: "numeric" }
+              )}
+            </span>
+          </div>
+        </div>
         {/* META */}
         <div className="flex gap-6 text-sm text-slate-600 dark:text-slate-400 mb-8">
           <span className="flex items-center gap-1">
