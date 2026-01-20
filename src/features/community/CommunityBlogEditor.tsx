@@ -143,7 +143,7 @@ export default function CommunityBlogEditor({
     return slug;
   };
 
-  /* ---------------- SEND INVITE ---------------- */
+  /* ---------------- SEND INVITE (JWT FIXED) ---------------- */
   const sendInvite = async (email) => {
     if (!email || !user?.id || !realBlogId) return;
 
@@ -172,9 +172,15 @@ export default function CommunityBlogEditor({
       return;
     }
 
+    /* ---------------- JWT ADDED HERE ONLY ---------------- */
+    const { data: session } = await supabase.auth.getSession();
+
     await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.session?.access_token}`,
+      },
       body: JSON.stringify({
         type: "collaboration-invite",
         email,
@@ -189,326 +195,297 @@ export default function CommunityBlogEditor({
   };
 
   /* ---------------- SUBMIT HANDLER ---------------- */
- const handleSubmit = async () => {
-  if (!title || !content) return;
+  const handleSubmit = async () => {
+    if (!title || !content) return;
 
-  if (isEditMode && !submissionNote.trim()) {
-    alert("Submission note is required when updating a blog.");
-    return;
-  }
+    if (isEditMode && !submissionNote.trim()) {
+      alert("Submission note is required when updating a blog.");
+      return;
+    }
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    /* ---------------------------------------------------
-       1️⃣ CREATE NEW BLOG
-    --------------------------------------------------- */
-    if (!isEditMode) {
-      const slug = await generateSlug(title);
+    try {
+      /* ---------- CREATE NEW BLOG ---------- */
+      if (!isEditMode) {
+        const slug = await generateSlug(title);
 
-      const { error } = await supabase.from("community_blogs").insert({
-        title,
-        excerpt,
-        content,
-        slug,
-        author_id: user.id,
-        status: "submitted",
-        submission_note: submissionNote,
-      });
+        const { error } = await supabase.from("community_blogs").insert({
+          title,
+          excerpt,
+          content,
+          slug,
+          author_id: user.id,
+          status: "submitted",
+          submission_note: submissionNote,
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // 🔥 Send email: FIRST SUBMIT
+        const { data: session } = await supabase.auth.getSession();
+
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            type: "community-submitted",
+            blogTitle: title,
+            authorEmail: user.email,
+          }),
+        });
+
+        alert("Blog submitted successfully");
+        return navigate("/community-blogs");
+      }
+
+      /* ---------- UPDATE BLOG ---------- */
+      let nextStatus = status;
+
+      if (status === "approved" || status === "rejected") {
+        nextStatus = "resubmitted";
+      } else if (status === "submitted") {
+        nextStatus = "submitted";
+      }
+
+      const { error: updateError } = await supabase
+        .from("community_blogs")
+        .update({
+          title,
+          excerpt,
+          content,
+          status: nextStatus,
+          submission_note: submissionNote,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", realBlogId);
+
+      if (updateError) throw updateError;
+
       const { data: session } = await supabase.auth.getSession();
 
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          type: "community-submitted",
-          blogTitle: title,
-          authorEmail: user.email,
-        }),
-      });
+      /* ---------- EMAILS ---------- */
+      if (nextStatus === "resubmitted") {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            type: "community-resubmitted",
+            blogTitle: title,
+            authorEmail: user.email,
+            submissionNote,
+          }),
+        });
+      }
 
-      alert("Blog submitted successfully");
+      if (nextStatus === "submitted" && status !== "submitted") {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            type: "community-submitted",
+            blogTitle: title,
+            authorEmail: user.email,
+          }),
+        });
+      }
+
+      alert("Changes submitted successfully");
       return navigate("/community-blogs");
+    } catch (err) {
+      console.error("UPDATE ERROR:", err);
+      alert("Update failed");
+    } finally {
+      setLoading(false);
     }
-
-    /* ---------------------------------------------------
-       2️⃣ UPDATE EXISTING BLOG
-    --------------------------------------------------- */
-    let nextStatus = status;
-
-    if (status === "approved" || status === "rejected") {
-      // 🔥 Approval/Rejection → Resubmitted
-      nextStatus = "resubmitted";
-    } 
-    else if (status === "submitted") {
-      // 🔥 Still submitted → NO EMAIL should be sent
-      nextStatus = "submitted";
-    }
-
-    const { error: updateError } = await supabase
-      .from("community_blogs")
-      .update({
-        title,
-        excerpt,
-        content,
-        status: nextStatus,
-        submission_note: submissionNote,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", realBlogId);
-
-    if (updateError) throw updateError;
-
-    /* ---------------------------------------------------
-       3️⃣ EMAIL LOGIC BASED ON STATUS
-    --------------------------------------------------- */
-    const { data: session } = await supabase.auth.getSession();
-
-    // 🔥 RESUBMITTED → MAIL ADMIN
-    if (nextStatus === "resubmitted") {
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          type: "community-resubmitted",
-          blogTitle: title,
-          authorEmail: user.email,
-          submissionNote,
-        }),
-      });
-    }
-
-    // 🔥 FRESH SUBMISSION (edit of draft?) → MAIL ADMIN
-    if (nextStatus === "submitted" && status !== "submitted") {
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          type: "community-submitted",
-          blogTitle: title,
-          authorEmail: user.email,
-        }),
-      });
-    }
-
-    alert("Changes submitted successfully");
-    return navigate("/community-blogs");
-
-  } catch (err) {
-    console.error("UPDATE ERROR:", err);
-    alert("Update failed");
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   /* ---------------- UI ---------------- */
- return (
-  <div className="max-w-5xl mx-auto  rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-gray-300 dark:border-slate-700 flex flex-col max-h-[85vh] mt-8 ">
+  return (
+    <div className="max-w-5xl mx-auto  rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-gray-300 dark:border-slate-700 flex flex-col max-h-[85vh] mt-8 ">
 
-    {/* COLLABORATION ALERT */}
-    {isCollaborator && !inviteAccepted && (
-      <div className="px-8 py-4 bg-yellow-100 border-b text-center dark:bg-yellow-200/20 dark:border-slate-700">
-        <p className="font-medium mb-2 text-gray-900 dark:text-white">
-          You were invited to collaborate on this blog.
-        </p>
+      {isCollaborator && !inviteAccepted && (
+        <div className="px-8 py-4 bg-yellow-100 border-b text-center dark:bg-yellow-200/20 dark:border-slate-700">
+          <p className="font-medium mb-2 text-gray-900 dark:text-white">
+            You were invited to collaborate on this blog.
+          </p>
 
-        <button
-          onClick={() =>
-            supabase
-              .from("blog_invitations")
-              .update({
-                accepted: true,
-                accepted_at: new Date().toISOString(),
-              })
-              .eq("blog_id", realBlogId)
-              .eq("blog_type", "community")
-              .eq("invited_user_id", user.id)
-              .then(async () => {
-                setInviteAccepted(true);
-                await supabase.from("blog_collaborators").insert({
-                  blog_id: realBlogId,
-                  blog_type: "community",
-                  user_id: user.id,
-                });
-              })
-          }
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-        >
-          Accept Collaboration
-        </button>
-      </div>
-    )}
-
-    {/* HEADER */}
-    <div className="flex items-center justify-between px-8 py-5 border-b border-gray-300 dark:border-slate-700 ">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-        {isEditMode ? "Edit Community Blog" : "Create Community Blog"}
-      </h2>
-
-      <div className="flex items-center gap-3">
-        {isEditMode && (
           <button
-            onClick={() => setShowInviteModal(true)}
+            onClick={() =>
+              supabase
+                .from("blog_invitations")
+                .update({
+                  accepted: true,
+                  accepted_at: new Date().toISOString(),
+                })
+                .eq("blog_id", realBlogId)
+                .eq("blog_type", "community")
+                .eq("invited_user_id", user.id)
+                .then(async () => {
+                  setInviteAccepted(true);
+                  await supabase.from("blog_collaborators").insert({
+                    blog_id: realBlogId,
+                    blog_type: "community",
+                    user_id: user.id,
+                  });
+                })
+            }
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
           >
-            Invite
+            Accept Collaboration
           </button>
-        )}
+        </div>
+      )}
 
-        <button onClick={onCancel}>
-          <X className="text-gray-700 dark:text-gray-300" />
-        </button>
+      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-300 dark:border-slate-700 ">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          {isEditMode ? "Edit Community Blog" : "Create Community Blog"}
+        </h2>
+
+        <div className="flex items-center gap-3">
+          {isEditMode && (
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+            >
+              Invite
+            </button>
+          )}
+
+          <button onClick={onCancel}>
+            <X className="text-gray-700 dark:text-gray-300" />
+          </button>
+        </div>
       </div>
-    </div>
 
-    {/* BODY */}
-    <div className="p-8 space-y-6 flex-1 overflow-y-auto">
+      <div className="p-8 space-y-6 flex-1 overflow-y-auto">
+        <input
+          className="w-full text-2xl font-bold bg-transparent outline-none border-b border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
+          value={title}
+          placeholder="Enter blog title"
+          onChange={(e) => setTitle(e.target.value)}
+        />
 
-      {/* TITLE */}
-      <input
-        className="w-full text-2xl font-bold bg-transparent outline-none border-b border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
-        value={title}
-        placeholder="Enter blog title"
-        onChange={(e) => setTitle(e.target.value)}
-      />
+        <input
+          className="w-full bg-transparent outline-none border-b border-gray-300 dark:border-slate-600 text-gray-800 dark:text-gray-200"
+          value={excerpt}
+          placeholder="Short summary"
+          onChange={(e) => setExcerpt(e.target.value)}
+        />
 
-      {/* EXCERPT */}
-      <input
-        className="w-full bg-transparent outline-none border-b border-gray-300 dark:border-slate-600 text-gray-800 dark:text-gray-200"
-        value={excerpt}
-        placeholder="Short summary"
-        onChange={(e) => setExcerpt(e.target.value)}
-      />
+        <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700  jodit-theme ">
+          <JoditEditor
+            ref={editorRef}
+            value={content}
+            config={{
+              height: 520,
+              theme: isDark ? "dark" : "default",
+              toolbarAdaptive: false,
+              toolbarSticky: false,
+              buttons: [
+                "bold",
+                "italic",
+                "underline",
+                "strikethrough",
+                "|",
+                "superscript",
+                "subscript",
+                "|",
+                "ul",
+                "ol",
+                "indent",
+                "outdent",
+                "|",
+                "fontsize",
+                "lineHeight",
+                "brush",
+                "paragraph",
+                "align",
+                "|",
+                "link",
+                "uploadImage",
+                "video",
+                "file",
+                "table",
+                "hr",
+                "|",
+                "symbols",
+                "find",
+                "|",
+                "classSpan",
+                "source",
+                "|",
+                "print",
+                "undo",
+                "redo",
+                "preview",
+                "fullsize",
+              ],
+              controls: {
+                uploadImage: {
+                  icon: "image",
+                  tooltip: "Upload Image",
+                  exec: async (editor) => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
 
-      {/* CONTENT EDITOR */}
-      <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700  jodit-theme ">
-        <JoditEditor
-          ref={editorRef}
-          value={content}
-          config={{
-            height: 520,
-            theme: isDark ? "dark" : "default",
-            toolbarAdaptive: false,
-            toolbarSticky: false,
-           
-            
-       
-            
-            buttons: [
-              "bold",
-              "italic",
-              "underline",
-              "strikethrough",
-              "|",
-              "superscript",
-              "subscript",
-              "|",
-              "ul",
-              "ol",
-              "indent",
-              "outdent",
-              "|",
-              "fontsize",
-              "lineHeight",
-              "brush",
-              "paragraph",
-              "align",
-              "|",
-              "link",
-              "uploadImage",
-              "video",
-              "file",
-              "table",
-              "hr",
-              "|",
-              "symbols",
-              "find",
-              "|",
-              "classSpan",
-              "source",
-              "|",
-              "print",
-              "undo",
-              "redo",
-              "preview",
-              "fullsize",
-            ],
-            controls: {
-              uploadImage: {
-                icon: "image",
-                tooltip: "Upload Image",
-                exec: async (editor: any) => {
-                  const input = document.createElement("input");
-                  input.type = "file";
-                  input.accept = "image/*";
+                    input.onchange = async () => {
+                      const file = input.files?.[0];
+                      if (!file) return;
 
-                  input.onchange = async () => {
-                    const file = input.files?.[0];
-                    if (!file) return;
+                      try {
+                        const url = await uploadToSupabase(file);
+                        editor.selection.insertImage(url);
+                      } catch (err) {
+                        console.error(err);
+                        alert("Image upload failed");
+                      }
+                    };
 
-                    try {
-                      const url = await uploadToSupabase(file);
-                      editor.selection.insertImage(url);
-                    } catch (err) {
-                      console.error(err);
-                      alert("Image upload failed");
-                    }
-                  };
-
-                  input.click();
+                    input.click();
+                  },
                 },
               },
-            },
-          }}
-          onBlur={(v) => setContent(v)}
-        />
+            }}
+            onBlur={(v) => setContent(v)}
+          />
+        </div>
+
+        {(isAuthor || isCollaborator) && isEditMode && (
+          <textarea
+            className="w-full p-3 border rounded-lg bg-transparent dark:bg-slate-800 dark:text-white border-gray-300 dark:border-slate-700"
+            value={submissionNote}
+            onChange={(e) => setSubmissionNote(e.target.value)}
+            placeholder="Explain the changes made…"
+          />
+        )}
       </div>
 
-      {/* SUBMISSION NOTE */}
-      {(isAuthor || isCollaborator) && isEditMode && (
-        <textarea
-          className="w-full p-3 border rounded-lg bg-transparent dark:bg-slate-800 dark:text-white border-gray-300 dark:border-slate-700"
-          value={submissionNote}
-          onChange={(e) => setSubmissionNote(e.target.value)}
-          placeholder="Explain the changes made…"
-        />
-      )}
+      <div className="px-8 py-5 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-300 dark:border-slate-700 flex justify-end gap-3">
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="px-5 py-3 flex items-center gap-2 rounded-xl bg-gray-500 hover:bg-gray-600 text-white font-medium transition disabled:opacity-50"
+        >
+          <Send size={18} />
+          {isCollaborator ? "Submit as Collaborator" : "Submit Changes"}
+        </button>
+      </div>
+
+      <InviteModal
+        open={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onInvite={sendInvite}
+      />
     </div>
-
-    {/* FOOTER */}
-    <div className="px-8 py-5 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-300 dark:border-slate-700 flex justify-end gap-3">
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        className="px-5 py-3 flex items-center gap-2 rounded-xl bg-gray-500 hover:bg-gray-600 text-white font-medium transition disabled:opacity-50"
-      >
-        <Send size={18} />
-        {isCollaborator ? "Submit as Collaborator" : "Submit Changes"}
-      </button>
-    </div>
-
-    {/* INVITE MODAL */}
-    <InviteModal
-      open={showInviteModal}
-      onClose={() => setShowInviteModal(false)}
-      onInvite={sendInvite}
-    />
-  </div>
-);
-
-}  
+  );
+}

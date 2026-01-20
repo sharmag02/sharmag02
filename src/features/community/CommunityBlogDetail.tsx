@@ -39,6 +39,23 @@ interface CommentType {
     is_admin?: boolean;
   } | null;
 }
+// Generate unique IDs for all H1/H2/H3 before rendering
+const addHeadingIds = (html: string) => {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+
+  let count = 0;
+
+  div.querySelectorAll("h1, h2, h3").forEach((el) => {
+    const text = el.textContent?.trim() || "section";
+    const id =
+      text.toLowerCase().replace(/[^\w]+/g, "-") + "-" + count++;
+
+    el.setAttribute("id", id);
+  });
+
+  return div.innerHTML;
+};
 
 /* ---------------- COMPONENT ---------------- */
 
@@ -90,7 +107,11 @@ useEffect(() => {
       return;
     }
 
-    setBlog(data);
+    setBlog({
+  ...data,
+  content: addHeadingIds(data.content),
+});
+
     setLikes(data.likes ?? 0);
 
     // Load coauthors
@@ -126,17 +147,29 @@ useEffect(() => {
 
   /* ---------------- LIKE ---------------- */
 
-  const handleLike = async () => {
-    if (!blog || !user) return alert("Login to like the post");
+ const handleLike = async () => {
+  if (!blog || !user) return alert("Login to like this post");
 
-    const liked = sessionStorage.getItem(`liked_${blog.id}`);
-    if (liked) return;
+  const key = `community_like_${blog.id}`;
 
-    await supabase.from("blogs").update({ likes: likes + 1 }).eq("id", blog.id);
+  if (sessionStorage.getItem(key)) return;
 
-    sessionStorage.setItem(`liked_${blog.id}`, "true");
-    setLikes((l) => l + 1);
-  };
+  const { error } = await supabase
+    .from("community_blogs")
+    .update({ likes: likes + 1 })
+    .eq("id", blog.id);
+
+  if (error) {
+    console.error("Like error:", error);
+    alert("Failed to like post");
+    return;
+  }
+
+  sessionStorage.setItem(key, "true");
+  setLikes((prev) => prev + 1);
+};
+
+
 
   /* ---------------- COMMENT ACTIONS ---------------- */
 
@@ -173,52 +206,42 @@ useEffect(() => {
 
   /* ---------------- TOC ---------------- */
 
-  useEffect(() => {
-    if (!blog?.content) return;
+ useEffect(() => {
+  if (!blog?.content) return;
 
-    const div = document.createElement("div");
-    div.innerHTML = blog.content;
+  const div = document.createElement("div");
+  div.innerHTML = blog.content;
 
-    let h1 = 0,
-      h2 = 0,
+  let h1 = 0, h2 = 0, h3 = 0;
+
+  const found = Array.from(div.querySelectorAll("h1, h2, h3")).map((el) => {
+    const level = Number(el.tagName.replace("H", ""));
+    const text = el.textContent?.trim() || "";
+    const id = el.getAttribute("id") || "";
+
+    let index = "";
+    if (level === 1) {
+      h1++;
+      h2 = 0;
       h3 = 0;
+      index = `${h1}`;
+    } else if (level === 2) {
+      h2++;
+      h3 = 0;
+      index = `${h1}.${h2}`;
+    } else {
+      h3++;
+      index = `${h1}.${h2}.${h3}`;
+    }
 
-    const found = Array.from(div.querySelectorAll("h1, h2, h3")).map((el) => {
-      const level = Number(el.tagName.replace("H", ""));
-      const text = el.textContent?.trim() || "";
-      const id = text.toLowerCase().replace(/\s+/g, "-");
+    return { id, text, level, index };
+  });
 
-      let index = "";
-      if (level === 1) {
-        h1++;
-        h2 = h3 = 0;
-        index = `${h1}`;
-      } else if (level === 2) {
-        h2++;
-        index = `${h1}.${h2}`;
-      } else {
-        h3++;
-        index = `${h1}.${h2}.${h3}`;
-      }
+  setToc(found);
+}, [blog]);
 
-      return { id, text, level, index };
-    });
 
-    setToc(found);
-  }, [blog]);
-
-  useEffect(() => {
-    if (!contentRef.current) return;
-
-    toc.forEach((item) => {
-      const elements = contentRef.current!.querySelectorAll(`h${item.level}`);
-      elements.forEach((el) => {
-        if (el.textContent?.trim() === item.text.trim()) {
-          el.setAttribute("id", item.id);
-        }
-      });
-    });
-  }, [toc]);
+  
 
   /* ---------------- AUTHOR INFO ---------------- */
 
@@ -233,16 +256,45 @@ useEffect(() => {
 
   if (loading) return <p className="text-center mt-16">Loading blog…</p>;
   if (!blog) return null;
+  
+     const handleShare = async () => {
+  const url = window.location.href;
 
-  return (
+  // Native share (mobile)
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: blog.title,
+        text: "Check out this blog!",
+        url,
+      });
+      return;
+    } catch {}
+  }
+
+  // Clipboard fallback
+  try {
+    await navigator.clipboard.writeText(url);
+    alert("Link copied to clipboard!");
+  } catch {
+    alert("Failed to copy. Please manually copy the link.");
+  }
+};
+
+ return (
     <div className="max-w-5xl mx-auto px-4 py-12">
       {/* Back */}
       <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 mb-8 text-slate-600 dark:text-slate-300 hover:text-blue-500"
-      >
-        <ArrowLeft size={18} /> Back
-      </button>
+  onClick={() => navigate(-1)}
+  className="
+    flex items-center gap-2 mb-8
+    text-slate-700 hover:text-blue-500
+    dark:text-slate-600 dark:hover:text-blue-400
+    font-medium
+  "
+>
+  <ArrowLeft size={18} /> Back
+</button>
 
       <article className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl p-10 leading-relaxed">
 
@@ -304,11 +356,11 @@ useEffect(() => {
           </button>
 
           <button
-            onClick={() => navigator.clipboard.writeText(window.location.href)}
-            className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-400 transition"
-          >
-            <Share2 size={20} /> Share
-          </button>
+  onClick={handleShare}
+  className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-400 transition"
+>
+  <Share2 size={20} /> Share
+</button>
         </div>
 
         {/* TOC */}

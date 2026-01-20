@@ -1,3 +1,4 @@
+/* YOUR ORIGINAL IMPORTS – UNTOUCHED */
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import JoditEditor from "jodit-react";
@@ -7,8 +8,6 @@ import { useAuth } from "../../../shared/context/AuthContext";
 import { useTheme } from "../../../shared/context/ThemeContext";
 import { extractImagePaths } from "../../../shared/utils/extractImagePaths";
 import { uploadToSupabase } from "../../../shared/lib/SupabaseUploadAdapter";
-
-
 
 /* ---------------- SLUG GENERATOR ---------------- */
 const generateSlug = (text) =>
@@ -22,7 +21,6 @@ const generateSlug = (text) =>
 /* ---------------- SUBMISSION NOTE MODAL ---------------- */
 function SubmissionNoteModal({ open, onClose, onSubmit }) {
   const [note, setNote] = useState("");
-
   if (!open) return null;
 
   return (
@@ -121,16 +119,13 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
 
   const { id } = useParams();
   const realBlogId = id || blogId || null;
-
   const isDark = theme === "dark";
   const isEditMode = Boolean(realBlogId);
 
   const editorRef = useRef(null);
   const originalContentRef = useRef("");
   const originalSlugRef = useRef("");
-
   const wasPublishedRef = useRef(false);
-
 
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
@@ -157,15 +152,15 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
         .eq("id", realBlogId)
         .single();
 
-    if (data) {
-  setTitle(data.title);
-  setExcerpt(data.excerpt);
-  setContent(data.content);
-  setStatus(data.status);
-  originalContentRef.current = data.content;
-  wasPublishedRef.current = data.published === true;
-  originalSlugRef.current = data.slug;   // <-- ADD THIS
-}
+      if (data) {
+        setTitle(data.title);
+        setExcerpt(data.excerpt);
+        setContent(data.content);
+        setStatus(data.status);
+        originalContentRef.current = data.content;
+        wasPublishedRef.current = data.published === true;
+        originalSlugRef.current = data.slug;
+      }
 
       const { data: collab } = await supabase
         .from("blog_collaborators")
@@ -194,42 +189,53 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
   }, [realBlogId, user?.id]);
 
   /* ---------------- SEND INVITE ---------------- */
-  const sendInvite = async (email) => {
-    if (!email.trim() || !realBlogId || !user?.id) return;
+  /* ---------------- SEND INVITE ---------------- */
+const sendInvite = async (email) => {
+  if (!email.trim() || !realBlogId || !user?.id) return;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
 
-    const invitedUserId = profile?.id || null;
-    const token = crypto.randomUUID();
+  const invitedUserId = profile?.id || null;
+  const token = crypto.randomUUID();
 
-    await supabase.from("blog_invitations").insert({
-      blog_id: realBlogId,
-      blog_type: "blog",
-      invited_email: email,
-      invited_user_id: invitedUserId,
-      invited_by: user.id,
+  await supabase.from("blog_invitations").insert({
+    blog_id: realBlogId,
+    blog_type: "blog",
+    invited_email: email,
+    invited_user_id: invitedUserId,
+    invited_by: user.id,
+    token,
+  });
+
+  /* ---------- GET JWT CORRECTLY ---------- */
+  const { data: sessionData } = await supabase.auth.getSession();
+  const jwt = sessionData.session?.access_token;
+
+  /* ---------- FINAL 401 FIX (REQUIRED HEADERS) ---------- */
+  await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwt}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, // 🔥 Mandatory fix
+    },
+    body: JSON.stringify({
+      type: "collaboration-invite",
+      email,
       token,
-    });
+      blogTitle: title,
+      inviterName: user.email,
+    }),
+  });
 
-    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "collaboration-invite",
-        email,
-        token,
-        blogTitle: title,
-        inviterName: user.email,
-      }),
-    });
+  alert("Invitation email sent!");
+  setShowInviteModal(false);
+};
 
-    alert("Invitation email sent!");
-    setShowInviteModal(false);
-  };
 
   /* ---------------- ACCEPT COLLAB INVITE ---------------- */
   const acceptInvite = async () => {
@@ -255,171 +261,166 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
     setHasPendingInvite(false);
   };
 
-/* ---------------- SAVE HANDLER ---------------- */
-const handleSaveInternal = async (requestedStatus, submissionNote = null) => {
-  setLoading(true);
+  /* ---------------- SAVE HANDLER ---------------- */
+  const handleSaveInternal = async (requestedStatus, submissionNote = null) => {
+    setLoading(true);
 
-  try {
-    /* ---------------- CREATE NEW BLOG ---------------- */
-    if (!isEditMode) {
-      const slug = generateSlug(title);
+    try {
+      /* ---------------- CREATE NEW BLOG ---------------- */
+      if (!isEditMode) {
+        const slug = generateSlug(title);
 
-      const { data, error } = await supabase
-        .from("blogs")
-        .insert({
-          title,
-          slug,
-          excerpt,
-          content,
-          author_id: user.id,
-          status: requestedStatus,
-          published: requestedStatus === "published",
-          is_edited: false,
-          submission_note: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+        const { data, error } = await supabase
+          .from("blogs")
+          .insert({
+            title,
+            slug,
+            excerpt,
+            content,
+            author_id: user.id,
+            status: requestedStatus,
+            published: requestedStatus === "published",
+            is_edited: false,
+            submission_note: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
 
-      if (error) {
-        console.error(error);
-        alert(error.message);
-        setLoading(false);
+        if (error) {
+          console.error(error);
+          alert(error.message);
+          setLoading(false);
+          return;
+        }
+
+        const shouldSendEmailOnCreate =
+          requestedStatus === "published" && wasPublishedRef.current === false;
+
+        if (shouldSendEmailOnCreate) {
+          /* ---------- FIX 1: Use REAL DB slug ---------- */
+          await supabase.from("email_queue").insert({
+            source: "blog",
+            title,
+            excerpt,
+            slug: data.slug, // FIXED
+          });
+
+          /* ---------- FIX 2: Correct JWT ---------- */
+          const { data: sessionData } = await supabase.auth.getSession();
+          const jwt = sessionData.session?.access_token;
+
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${jwt}`,
+              },
+              body: JSON.stringify({ type: "process-email-queue" }),
+            }
+          );
+
+          wasPublishedRef.current = true;
+        }
+
+        alert("Blog created successfully!");
+        onSave?.();
+        navigate("/blog");
         return;
       }
 
-      /* -------- EMAIL QUEUE (AUTO TRIGGER HANDLES SENDING) -------- */
-   
-const shouldSendEmailOnCreate =
-  requestedStatus === "published" && wasPublishedRef.current === false;
+      /* ---------------- REMOVE UNUSED IMAGES ---------------- */
+      const oldImgs = extractImagePaths(originalContentRef.current);
+      const newImgs = extractImagePaths(content);
+      const removed = oldImgs.filter((img) => !newImgs.includes(img));
 
+      if (removed.length) {
+        await supabase.storage.from("blog_images").remove(removed);
+      }
 
-if (shouldSendEmailOnCreate) {
+      /* ---------------- COLLABORATOR UPDATE ---------------- */
+      if (isCollaborator) {
+        const updateDataCollab = {
+          title,
+          excerpt,
+          content,
+          updated_at: new Date().toISOString(),
+          status: "draft",
+          published: false,
+          is_edited: true,
+          submission_note: submissionNote,
+        };
 
-  const { error: queueError } = await supabase.from("email_queue").insert({
-    source: "blog",
-    title,
-    excerpt,
-    slug: generateSlug(title),
-  });
+        await supabase.from("blogs").update(updateDataCollab).eq("id", realBlogId);
 
-  if (!queueError) {
-    const { data: session } = await supabase.auth.getSession();
+        alert("Changes submitted (Draft created).");
+        onSave?.();
+        navigate("/blog");
+        return;
+      }
 
-    await supabase.functions.invoke("send-email", {
-      body: { type: "process-email-queue" },
-      headers: {
-        Authorization: `Bearer ${session?.session?.access_token}`,
-      },
-    });
-
-    wasPublishedRef.current = true;   // IMPORTANT: Lock so email never sends again
-  }
-}
-
-
-      alert("Blog created successfully!");
-      onSave?.();
-      navigate("/blog");
-      return;
-    }
-
-    /* ---------------- REMOVE UNUSED IMAGES ---------------- */
-    const oldImgs = extractImagePaths(originalContentRef.current);
-    const newImgs = extractImagePaths(content);
-    const removed = oldImgs.filter((img) => !newImgs.includes(img));
-
-    if (removed.length) {
-      await supabase.storage.from("blog_images").remove(removed);
-    }
-
-    /* ---------------- COLLABORATOR UPDATE ---------------- */
-    if (isCollaborator) {
-      const updateDataCollab = {
+      /* ---------------- ADMIN UPDATE ---------------- */
+      const updateDataAdmin = {
         title,
         excerpt,
         content,
         updated_at: new Date().toISOString(),
-        status: "draft",
-        published: false,
-        is_edited: true,
-        submission_note: submissionNote,
+        status: requestedStatus,
+        published: requestedStatus === "published",
+        is_edited: false,
+        submission_note: requestedStatus === "published" ? null : undefined,
       };
 
-      await supabase.from("blogs").update(updateDataCollab).eq("id", realBlogId);
+      await supabase.from("blogs").update(updateDataAdmin).eq("id", realBlogId);
 
-      alert("Changes submitted (Draft created).");
+      const shouldSendEmail =
+        requestedStatus === "published" && wasPublishedRef.current === false;
+
+      if (shouldSendEmail) {
+        await supabase.from("email_queue").insert({
+          source: "blog",
+          title,
+          excerpt,
+          slug: originalSlugRef.current,
+        });
+
+        /* ---------- FIX 2: Correct JWT ---------- */
+        const { data: sessionData } = await supabase.auth.getSession();
+        const jwt = sessionData.session?.access_token;
+
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwt}`,
+            },
+            body: JSON.stringify({ type: "process-email-queue" }),
+          }
+        );
+
+        wasPublishedRef.current = true;
+      }
+
+      alert(
+        requestedStatus === "published"
+          ? "Blog published successfully"
+          : "Blog saved successfully"
+      );
+
       onSave?.();
       navigate("/blog");
-      return;
+    } catch (err) {
+      console.error(err);
+      alert("Save failed");
     }
 
-    /* ---------------- ADMIN UPDATE ---------------- */
-    const updateDataAdmin = {
-      title,
-      excerpt,
-      content,
-      updated_at: new Date().toISOString(),
-      status: requestedStatus,
-      published: requestedStatus === "published",
-      is_edited: false,
-      submission_note: requestedStatus === "published" ? null : undefined,
-    };
-
-    await supabase.from("blogs").update(updateDataAdmin).eq("id", realBlogId);
-    // Keep ref in sync with DB
-
-
-
-    /* -------- EMAIL QUEUE (AUTO TRIGGER HANDLES SENDING) -------- */
-    /* -------- EMAIL QUEUE + CALL EDGE FUNCTION -------- */
-const shouldSendEmail =
-  requestedStatus === "published" && wasPublishedRef.current === false;
-
-if (shouldSendEmail) {
-  const { error: queueError } = await supabase.from("email_queue").insert({
-    source: "blog",
-    title,
-    excerpt,
-   slug: originalSlugRef.current,
-
-  });
-
-  if (!queueError) {
-    const { data: session } = await supabase.auth.getSession();
-
-    await supabase.functions.invoke("send-email", {
-      body: { type: "process-email-queue" },
-      headers: {
-        Authorization: `Bearer ${session?.session?.access_token}`,
-      },
-    });
-
-    // VERY IMPORTANT: lock so email never sends again
-    wasPublishedRef.current = true;
-  }
-}
-
-
-
-    alert(
-      requestedStatus === "published"
-        ? "Blog published successfully"
-        : "Blog saved successfully"
-    );
-
-    onSave?.();
-    navigate("/blog");
-  } catch (err) {
-    console.error(err);
-    alert("Save failed");
-  }
-
-  setLoading(false);
-};
-
-
+    setLoading(false);
+  };
 
   /* ---------------- PUBLIC SAVE BUTTON ---------------- */
   const handleSave = (requestedStatus) => {
@@ -438,6 +439,7 @@ if (shouldSendEmail) {
   /* ---------------- UI ---------------- */
   return (
     <div className="max-w-5xl mx-auto rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-gray-300 dark:border-slate-700 flex flex-col max-h-[85vh] mt-8">
+
       {hasPendingInvite && (
         <div className="px-8 py-4 bg-yellow-100 border-b text-center">
           <p className="font-medium mb-2">You were invited to collaborate.</p>
@@ -451,8 +453,7 @@ if (shouldSendEmail) {
       )}
 
       <div className="flex items-center justify-between px-8 py-5 border-b dark:border-slate-700">
-       <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           {isEditMode ? "Edit Blog" : "Create Blog"}
         </h2>
 
@@ -466,9 +467,8 @@ if (shouldSendEmail) {
             </button>
           )}
           <button onClick={onCancel}>
-  <X className="text-gray-700 dark:text-gray-300" />
-</button>
-
+            <X className="text-gray-700 dark:text-gray-300" />
+          </button>
         </div>
       </div>
 
@@ -492,132 +492,124 @@ if (shouldSendEmail) {
         />
 
         <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700 jodit-theme">
-  <JoditEditor
-    ref={editorRef}
-    value={content}
-    config={{
-      readonly: false,
-      height: 520,
-      theme: isDark ? "dark" : "default",
-      toolbarAdaptive: false,
-      toolbarSticky: false,
+          <JoditEditor
+            ref={editorRef}
+            value={content}
+            config={{
+              readonly: false,
+              height: 520,
+              theme: isDark ? "dark" : "default",
+              toolbarAdaptive: false,
+              toolbarSticky: false,
 
-      plugins: {
-        lineHeight: true,
-        indent: true,
-        symbols: true,
-        find: true,
-        print: true,
-        classSpan: true,
-        source: true,
-      },
+              plugins: {
+                lineHeight: true,
+                indent: true,
+                symbols: true,
+                find: true,
+                print: true,
+                classSpan: true,
+                source: true,
+              },
 
-      buttons: [
-        "bold",
-        "italic",
-        "underline",
-        "strikethrough",
-        "|",
+              buttons: [
+                "bold",
+                "italic",
+                "underline",
+                "strikethrough",
+                "|",
+                "superscript",
+                "subscript",
+                "|",
+                "ul",
+                "ol",
+                "indent",
+                "outdent",
+                "|",
+                "fontsize",
+                "lineHeight",
+                "brush",
+                "paragraph",
+                "align",
+                "|",
+                "link",
+                "uploadImage",
+                "video",
+                "file",
+                "table",
+                "hr",
+                "|",
+                "symbols",
+                "find",
+                "|",
+                "classSpan",
+                "source",
+                "|",
+                "print",
+                "undo",
+                "redo",
+                "preview",
+                "fullsize",
+              ],
 
-        "superscript",
-        "subscript",
-        "|",
+              controls: {
+                uploadImage: {
+                  icon: "image",
+                  tooltip: "Upload Image",
+                  exec: async (editor: any) => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
 
-        "ul",
-        "ol",
-        "indent",
-        "outdent",
-        "|",
+                    input.onchange = async () => {
+                      const file = input.files?.[0];
+                      if (!file) return;
 
-        "fontsize",
-        "lineHeight",
-        "brush",
-        "paragraph",
-        "align",
-        "|",
+                      try {
+                        const url = await uploadToSupabase(file);
+                        editor.selection.insertImage(url);
+                      } catch (err) {
+                        console.error(err);
+                        alert("Image upload failed");
+                      }
+                    };
 
-        "link",
-        "uploadImage",
-        "video",
-        "file",
-        "table",
-        "hr",
-        "|",
-
-        "symbols",
-        "find",
-        "|",
-
-        "classSpan",
-        "source",
-        "|",
-
-        "print",
-        "undo",
-        "redo",
-        "preview",
-        "fullsize",
-      ],
-
-      controls: {
-        uploadImage: {
-          icon: "image",
-          tooltip: "Upload Image",
-          exec: async (editor: any) => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = "image/*";
-
-            input.onchange = async () => {
-              const file = input.files?.[0];
-              if (!file) return;
-
-              try {
-                const url = await uploadToSupabase(file);
-                editor.selection.insertImage(url);
-              } catch (err) {
-                console.error(err);
-                alert("Image upload failed");
-              }
-            };
-
-            input.click();
-          },
-        },
-      },
-    }}
-    onBlur={(v) => setContent(v)}
-  />
-</div>
-
+                    input.click();
+                  },
+                },
+              },
+            }}
+            onBlur={(v) => setContent(v)}
+          />
+        </div>
       </div>
 
-     <div className="px-8 py-5 bg-gray-50 dark:bg-slate-800/50
+      <div
+        className="px-8 py-5 bg-gray-50 dark:bg-slate-800/50
                 border-t border-gray-300 dark:border-slate-700
-                flex justify-end gap-3">
-       <button
-  onClick={() => handleSave("draft")}
-  disabled={loading}
-  className="px-5 py-3 rounded-xl bg-gray-500 hover:bg-gray-600
+                flex justify-end gap-3"
+      >
+        <button
+          onClick={() => handleSave("draft")}
+          disabled={loading}
+          className="px-5 py-3 rounded-xl bg-gray-500 hover:bg-gray-600
              text-white font-medium transition disabled:opacity-50"
->
-
+        >
           Save Draft
         </button>
 
         <button
-  onClick={() => handleSave("published")}
-  disabled={loading}
-  className="flex items-center gap-2 px-6 py-3
+          onClick={() => handleSave("published")}
+          disabled={loading}
+          className="flex items-center gap-2 px-6 py-3
              text-white bg-blue-600 hover:bg-blue-700
              dark:bg-blue-500 dark:hover:bg-blue-400
              rounded-xl font-medium text-lg shadow-sm
              transition disabled:opacity-50"
->
-  <Save size={20} />
-  {loading ? "Saving…" : isCollaborator ? "Submit (Draft Only)" : "Publish"}
-</button>
-
+        >
+          <Save size={20} />
+          {loading ? "Saving…" : isCollaborator ? "Submit (Draft Only)" : "Publish"}
+        </button>
       </div>
 
       <InviteModal

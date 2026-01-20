@@ -82,31 +82,28 @@ export default function CommunityBlogReview({ blogId, onSave, onCancel }: Props)
         .eq("id", blogId);
 
       if (error) throw error;
+
       /* ------------------------------
-   SEND APPROVAL EMAIL TO USER
------------------------------- */
-const { data: session } = await supabase.auth.getSession();
+         SEND APPROVAL EMAIL TO USER
+      ------------------------------ */
+      const { data: { session } } = await supabase.auth.getSession();
 
-await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session?.session?.access_token}`,
-  },
-  body: JSON.stringify({
-    type: "community-approved",
-    userEmail: blog.profiles.email,
-    blogTitle: blog.title,
-   blogUrl: `${import.meta.env.VITE_SITE_URL}/community/${blog.slug}`,
- // ✅ send slug, not full URL
-  }),
-});
-
-
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          type: "community-approved",
+          userEmail: blog.profiles.email,
+          blogTitle: blog.title,
+          blogSlug: blog.slug,  // ✅ FIXED (was blogUrl)
+        }),
+      });
 
       /* ---------------------------------------------------
-         EMAIL QUEUE + IMMEDIATE EDGE FUNCTION CALL
-         (FIRST PUBLISH ONLY)
+         EMAIL QUEUE + IMMEDIATE SEND (FIRST PUBLISH ONLY)
       --------------------------------------------------- */
       if (isFirstPublish) {
         try {
@@ -120,13 +117,18 @@ await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
             });
 
           if (!queueError) {
-            const { data: session } = await supabase.auth.getSession();
+            const { data: { session } } = await supabase.auth.getSession();
 
-            await supabase.functions.invoke("send-email", {
-              body: { type: "process-email-queue" },
+            /* ✅ FIXED: use fetch (correct path), not supabase.functions.invoke */
+            await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+              method: "POST",
               headers: {
-                Authorization: `Bearer ${session?.session?.access_token}`,
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session?.access_token}`,
               },
+              body: JSON.stringify({
+                type: "process-email-queue",
+              }),
             });
           }
         } catch (emailErr) {
@@ -162,26 +164,25 @@ await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
         .eq("id", blogId);
 
       if (error) throw error;
+
       /* ------------------------------
-   SEND REJECTION EMAIL TO USER
------------------------------- */
-const { data: session } = await supabase.auth.getSession();
+         SEND REJECTION EMAIL TO USER
+      ------------------------------ */
+      const { data: { session } } = await supabase.auth.getSession();
 
-await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session?.session?.access_token}`,
-  },
-  body: JSON.stringify({
-    type: "community-rejected",
-    userEmail: blog.profiles.email,
-    blogTitle: blog.title,
-    adminFeedback,
-  }),
-});
-
-
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          type: "community-rejected",
+          userEmail: blog.profiles.email,
+          blogTitle: blog.title,
+          adminFeedback,
+        }),
+      });
 
       alert("Blog rejected.");
       onSave();
