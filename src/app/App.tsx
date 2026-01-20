@@ -14,9 +14,14 @@ import Skills from "../features/sections/Skills";
 import { Certifications } from "../features/sections/Certifications";
 import { Contact } from "../features/sections/Contact";
 
+import AcceptInvite from "../pages/AcceptInvite";
+
+import BlogEditor from "../features/blog/editor/BlogEditor";       
+import CommunityBlogEditor from "../features/community/CommunityBlogEditor"; 
+
 import { BlogList } from "../features/blog/BlogList";
 import BlogDetail from "../features/blog/BlogDetail";
-import  AdminPanel  from "../features/admin/AdminPanel";
+import AdminPanel from "../features/admin/AdminPanel";
 
 import AuthTabs from "../features/auth/AuthTabs";
 import ForgotPassword from "../features/auth/ForgotPassword";
@@ -26,8 +31,6 @@ import ProtectedRoute from "../app/ProtectedRoute";
 import { useAuth } from "../shared/context/AuthContext";
 
 import CommunityDashboard from "../features/community/CommunityDashboard";
-
-/* ❗ FIXED IMPORT — default export */
 import CommunityBlogDetail from "../features/community/CommunityBlogDetail";
 
 export default function App() {
@@ -49,6 +52,7 @@ export default function App() {
       <Route path="/auth" element={<AuthTabs />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/invite/accept" element={<AcceptInvite />} />
 
       {/* MAIN APP */}
       <Route
@@ -70,10 +74,30 @@ export default function App() {
                 <Route path="/blog" element={<BlogList />} />
                 <Route path="/blog/:slug" element={<BlogDetail />} />
 
-                {/* COMMUNITY BLOG DETAIL — FIXED */}
+                {/* COMMUNITY BLOG DETAIL */}
                 <Route path="/community-blog/:slug" element={<CommunityBlogDetail />} />
 
                 <Route path="/contact" element={<Contact />} />
+
+                {/* BLOG EDITOR ROUTE (PROTECTED) */}
+                <Route
+                  path="/blogs/edit/:id"
+                  element={
+                    <ProtectedRoute>
+                      <BlogEditor />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* COMMUNITY BLOG EDITOR ROUTE (PROTECTED) */}
+                <Route
+                  path="/community/edit/:id"
+                  element={
+                    <ProtectedRoute>
+                      <CommunityBlogEditor />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* COMMUNITY DASHBOARD (PROTECTED) */}
                 <Route

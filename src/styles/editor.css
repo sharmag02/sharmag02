@@ -1,6 +1,29 @@
 /* -------------------------------------------- */
 /*  PREMIUM DARK MODE THEME FOR JODIT EDITOR    */
 /* -------------------------------------------- */
+/* -------------------------
+   FIX: TOC text color
+----------------------------*/
+.blog-toc li {
+  color: #0f172a; /* slate-900 */
+}
+
+.dark .blog-toc li {
+  color: #e2e8f0 !important; /* slate-200 */
+}
+
+/* -------------------------
+   FIX: Table Header
+----------------------------*/
+.blog-content table thead th {
+  background-color: #f8fafc !important;   /* Light mode */
+  color: #1e293b !important;
+}
+
+.dark .blog-content table thead th {
+  background-color: #1e293b !important;   /* Dark slate */
+  color: #e2e8f0 !important;              /* slate-200 */
+}
 
 .dark .jodit-theme .jodit-wysiwyg {
   background-color: #0f172a !important; /* slate-900 */

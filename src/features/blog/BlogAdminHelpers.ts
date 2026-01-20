@@ -2,12 +2,9 @@ import { supabase } from "../../shared/lib/supabase";
 import type { Blog } from "../../shared/types/database";
 
 /* ======================================================
-   PUBLIC FETCH (Homepage / Blog Page)
-   ====================================================== */
+   PUBLIC FETCH
+====================================================== */
 
-/**
- * Fetch latest published blogs (Homepage)
- */
 export const fetchLatestBlogs = async (
   limit: number = 4
 ): Promise<Blog[]> => {
@@ -18,13 +15,10 @@ export const fetchLatestBlogs = async (
       title,
       excerpt,
       slug,
-      created_at,
-      profiles (
-        full_name,
-        email
-      )
+      created_at
     `)
-    .eq("published", true) // ✅ REQUIRED FOR RLS
+    .eq("published", true)
+    .eq("status", "published")
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -32,9 +26,6 @@ export const fetchLatestBlogs = async (
   return data || [];
 };
 
-/**
- * Fetch paginated published blogs (Public Blog page)
- */
 export const fetchBlogsPaginated = async (
   page: number,
   pageSize: number = 6
@@ -50,15 +41,12 @@ export const fetchBlogsPaginated = async (
       title,
       excerpt,
       slug,
-      created_at,
-      profiles (
-        full_name,
-        email
-      )
+      created_at
     `,
       { count: "exact" }
     )
-    .eq("published", true) // ✅ REQUIRED
+    .eq("published", true)
+    .eq("status", "published")
     .order("created_at", { ascending: false })
     .range(from, to);
 
@@ -71,12 +59,9 @@ export const fetchBlogsPaginated = async (
 };
 
 /* ======================================================
-   ADMIN FETCH (Dashboard)
-   ====================================================== */
+   ADMIN FETCH
+====================================================== */
 
-/**
- * Fetch all blogs (Admin panel – includes drafts)
- */
 export const fetchAllBlogs = async (): Promise<Blog[]> => {
   const { data, error } = await supabase
     .from("blogs")
@@ -86,14 +71,13 @@ export const fetchAllBlogs = async (): Promise<Blog[]> => {
       excerpt,
       content,
       slug,
-      author_id,
       published,
+      status,
+      is_edited,
+      submission_note,
+      co_authors,
       created_at,
-      updated_at,
-      profiles (
-        full_name,
-        email
-      )
+      updated_at
     `)
     .order("created_at", { ascending: false });
 
@@ -101,12 +85,7 @@ export const fetchAllBlogs = async (): Promise<Blog[]> => {
   return data || [];
 };
 
-/**
- * Fetch single blog by ID (Admin editor)
- */
-export const fetchBlogById = async (
-  id: string // ✅ UUID FIX
-): Promise<Blog | null> => {
+export const fetchBlogById = async (id: string): Promise<Blog | null> => {
   const { data, error } = await supabase
     .from("blogs")
     .select("*")
@@ -118,12 +97,9 @@ export const fetchBlogById = async (
 };
 
 /* ======================================================
-   MUTATIONS (ADMIN ONLY)
-   ====================================================== */
+   MUTATIONS (ADMIN-ONLY)
+====================================================== */
 
-/**
- * Create new blog
- */
 export const createBlog = async (
   blog: Partial<Blog>
 ): Promise<Blog | null> => {
@@ -131,7 +107,10 @@ export const createBlog = async (
     .from("blogs")
     .insert({
       ...blog,
-      published: true, // ✅ ensure published
+      status: "published",
+      published: true,
+      is_edited: false,
+      submission_note: null,
     })
     .select()
     .maybeSingle();
@@ -140,17 +119,33 @@ export const createBlog = async (
   return data || null;
 };
 
-/**
- * Update blog
- */
+/** Admin updates */
 export const updateBlog = async (
-  id: string, // ✅ UUID FIX
+  id: string,
   blog: Partial<Blog>
 ) => {
+  const updateData: Partial<Blog> = {
+    ...blog,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from("blogs")
+    .update(updateData)
+    .eq("id", id);
+
+  if (error) throw error;
+};
+
+/** Admin publishes blog */
+export const publishBlog = async (id: string) => {
   const { error } = await supabase
     .from("blogs")
     .update({
-      ...blog,
+      status: "published",
+      published: true,
+      is_edited: false,
+      submission_note: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
@@ -158,14 +153,8 @@ export const updateBlog = async (
   if (error) throw error;
 };
 
-/**
- * Delete blog
- */
+/** Delete blog */
 export const deleteBlog = async (id: string) => {
-  const { error } = await supabase
-    .from("blogs")
-    .delete()
-    .eq("id", id);
-
+  const { error } = await supabase.from("blogs").delete().eq("id", id);
   if (error) throw error;
 };

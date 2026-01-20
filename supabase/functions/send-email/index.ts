@@ -2,28 +2,32 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import nodemailer from "npm:nodemailer";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-/* ---------- CORS ---------- */
+/* ---------------------------------------------------------
+   CORS
+--------------------------------------------------------- */
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-/* ---------- CLIENTS ---------- */
-
-// Service role client
+/* ---------------------------------------------------------
+   SUPABASE CLIENTS
+--------------------------------------------------------- */
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-// For auth validation
 const anonClient = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_ANON_KEY")!
 );
 
-/* ---------- MAIL ---------- */
+/* ---------------------------------------------------------
+   MAILER
+--------------------------------------------------------- */
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -32,14 +36,168 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/* ---------- SERVER ---------- */
+/* ---------------------------------------------------------
+   SITE URL
+--------------------------------------------------------- */
+const SITE_URL =
+  Deno.env.get("SITE_URL") || "https://sharmag02.netlify.app";
+
+/* ---------------------------------------------------------
+   EMAIL TEMPLATES
+--------------------------------------------------------- */
+
+/* ---------- 1) Collaboration Invite Email Template ---------- */
+function inviteTemplate(inviter: string, blogTitle: string, inviteLink: string) {
+  return `
+  <div style="font-family: Arial, sans-serif; padding: 24px; background:#f6f7fb;">
+    <div style="max-width:600px;margin:auto;background:white;padding:24px;border-radius:12px;">
+
+      <h2 style="color:#1e293b;margin-bottom:8px;">
+        You've been invited to collaborate!
+      </h2>
+
+      <p style="color:#334155;font-size:15px;">
+        <b>${inviter}</b> invited you to collaborate on:
+      </p>
+
+      <h3 style="color:#0f172a;">${blogTitle}</h3>
+
+      <a href="${inviteLink}" 
+        style="
+          display:inline-block;margin-top:18px;background:#2563eb;
+          padding:14px 26px;color:white;border-radius:10px;
+          text-decoration:none;font-size:16px;font-weight:600;">
+        Accept Collaboration
+      </a>
+
+      <hr style="margin:28px 0;border-top:1px solid #e5e7eb;" />
+
+      <p style="color:#64748b;font-size:14px;margin-bottom:8px;">
+        Connect with Gaurav Kumar:
+      </p>
+
+      <a href="https://linkedin.com/in/sharmag02" 
+         style="background:#0a66c2;color:white;padding:10px 18px;
+         border-radius:8px;text-decoration:none;margin-right:10px;">
+        LinkedIn
+      </a>
+
+      <a href="https://github.com/sharmag02"
+        style="background:#111827;color:white;padding:10px 18px;
+        border-radius:8px;text-decoration:none;margin-right:10px;">
+        GitHub
+      </a>
+
+      <a href="https://sharmag02.netlify.app"
+        style="background:#2563eb;color:white;padding:10px 18px;
+        border-radius:8px;text-decoration:none;">
+        Portfolio
+      </a>
+
+      <p style="margin-top:28px;color:#94a3b8;font-size:12px;">
+        Contact: contact.sharmag02@gmail.com
+      </p>
+    </div>
+  </div>
+  `;
+}
+
+/* ---------- 2) Blog Publish Email Template ---------- */
+function blogTemplate(job: any, link: string) {
+  return `
+  <div style="font-family: Arial, sans-serif; padding: 24px; background:#f6f7fb;">
+    <div style="max-width:600px;margin:auto;background:white;padding:24px;border-radius:12px;">
+
+      <h1 style="margin:0 0 12px;color:#0f172a;font-size:26px;">
+        ${job.title}
+      </h1>
+
+      <p style="color:#334155;font-size:16px;line-height:1.6;">
+        ${job.excerpt || ""}
+      </p>
+
+      <a href="${link}" 
+        style="
+          display:inline-block;margin-top:20px;background:#2563eb;
+          padding:14px 26px;color:white;border-radius:10px;
+          text-decoration:none;font-size:16px;font-weight:600;">
+        📖 Read Full Blog
+      </a>
+
+      <hr style="margin:28px 0;border-top:1px solid #e5e7eb;" />
+
+      <p style="color:#64748b;font-size:14px;margin-bottom:8px;">
+        Follow Gaurav Kumar:
+      </p>
+
+      <a href="https://linkedin.com/in/sharmag02"
+        style="background:#0a66c2;color:white;padding:10px 18px;
+        border-radius:8px;text-decoration:none;margin-right:10px;">
+        LinkedIn
+      </a>
+
+      <a href="https://github.com/sharmag02"
+        style="background:#111827;color:white;padding:10px 18px;
+        border-radius:8px;text-decoration:none;margin-right:10px;">
+        GitHub
+      </a>
+
+      <a href="https://sharmag02.netlify.app"
+        style="background:#2563eb;color:white;padding:10px 18px;
+        border-radius:8px;text-decoration:none;">
+        Portfolio
+      </a>
+
+      <p style="margin-top:28px;color:#94a3b8;font-size:12px;">
+        Contact: contact.sharmag02@gmail.com
+      </p>
+    </div>
+  </div>
+  `;
+}
+
+/* ---------------------------------------------------------
+   SERVER
+--------------------------------------------------------- */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  let body = {};
   try {
-    /* 🔐 REQUIRE JWT */
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
+  console.log("➡️ Incoming request:", body);
+
+  /* ======================================================
+     1) 🚀 COLLABORATION INVITE EMAIL
+  ====================================================== */
+  if (body.type === "collaboration-invite") {
+    try {
+      const inviteLink = `${SITE_URL}/invite/accept?token=${body.token}`;
+
+      await transporter.sendMail({
+        from: `"${body.inviterName}" <${Deno.env.get("GMAIL_USER")!}>`,
+        to: body.email,
+        subject: `You're Invited to Collaborate on “${body.blogTitle}”`,
+        html: inviteTemplate(body.inviterName, body.blogTitle, inviteLink),
+      });
+
+      return new Response("Invite email sent", { headers: corsHeaders });
+    } catch (err) {
+      console.error("❌ Invite error:", err);
+      return new Response("Invite error", { status: 500, headers: corsHeaders });
+    }
+  }
+
+  /* ======================================================
+     2) 📬 PROCESS EMAIL QUEUE (ADMIN ONLY)
+  ====================================================== */
+  if (body.type === "process-email-queue") {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response("Unauthorized", {
@@ -48,20 +206,19 @@ serve(async (req) => {
       });
     }
 
-    /* 🔐 VERIFY USER */
+    const token = authHeader.replace("Bearer ", "");
+
     const {
       data: { user },
-      error: authErr,
-    } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
+    } = await anonClient.auth.getUser(token);
 
-    if (authErr || !user) {
+    if (!user) {
       return new Response("Invalid user", {
         status: 401,
         headers: corsHeaders,
       });
     }
 
-    /* 👑 ADMIN CHECK */
     const { data: profile } = await adminClient
       .from("profiles")
       .select("is_admin")
@@ -69,13 +226,13 @@ serve(async (req) => {
       .single();
 
     if (!profile?.is_admin) {
-      return new Response("Forbidden: Admin only", {
+      return new Response("Forbidden", {
         status: 403,
         headers: corsHeaders,
       });
     }
 
-    /* ---------- FETCH PENDING EMAIL JOBS ---------- */
+    /* --- Fetch jobs --- */
     const { data: jobs } = await adminClient
       .from("email_queue")
       .select("*")
@@ -86,7 +243,6 @@ serve(async (req) => {
       return new Response("No pending emails", { headers: corsHeaders });
     }
 
-    /* ---------- FETCH SUBSCRIBERS ---------- */
     const { data: subscribers } = await adminClient
       .from("blog_subscribers")
       .select("email")
@@ -96,134 +252,40 @@ serve(async (req) => {
       return new Response("No subscribers", { headers: corsHeaders });
     }
 
-    /* ---------- SEND EMAILS ---------- */
+    /* --- Send emails --- */
     for (const job of jobs) {
+      const isCommunity = job.source === "community_blog";
+
+      const link = isCommunity
+        ? `${SITE_URL}/community/${job.slug}`
+        : `${SITE_URL}/blog/${job.slug}`;
+
+      const html = blogTemplate(job, link);
+
       for (const sub of subscribers) {
         await transporter.sendMail({
           from: `"Gaurav Kumar" <${Deno.env.get("GMAIL_USER")!}>`,
           to: sub.email,
-          subject: `📝 New Blog Published: ${job.title}`,
-          html: `
-            <div style="
-              font-family: Arial, Helvetica, sans-serif;
-              background-color: #f4f6fb;
-              padding: 30px;
-            ">
-              <div style="
-                max-width: 600px;
-                margin: auto;
-                background-color: #ffffff;
-                border-radius: 12px;
-                padding: 28px;
-                box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-              ">
-
-                <h1 style="
-                  margin: 0 0 12px;
-                  font-size: 26px;
-                  color: #0f172a;
-                ">
-                  ${job.title}
-                </h1>
-
-                <p style="
-                  font-size: 16px;
-                  line-height: 1.6;
-                  color: #334155;
-                  margin-bottom: 26px;
-                ">
-                  ${job.excerpt || "A new blog has been published. Click below to read it."}
-                </p>
-
-                <a
-                  href="${Deno.env.get("SITE_URL")}/blog/${job.slug}"
-                  style="
-                    display: inline-block;
-                    background-color: #2563eb;
-                    color: #ffffff;
-                    text-decoration: none;
-                    padding: 14px 26px;
-                    border-radius: 10px;
-                    font-size: 16px;
-                    font-weight: 600;
-                  "
-                >
-                  📖 Read Full Blog
-                </a>
-
-                <hr style="
-                  margin: 32px 0;
-                  border: none;
-                  border-top: 1px solid #e5e7eb;
-                " />
-
-                <p style="
-                  font-size: 14px;
-                  color: #64748b;
-                  margin-bottom: 14px;
-                ">
-                  Follow me for more tech blogs & updates:
-                </p>
-
-                <a
-                  href="https://www.linkedin.com/in/sharmag02"
-                  style="
-                    display: inline-block;
-                    background-color: #0a66c2;
-                    color: white;
-                    padding: 10px 18px;
-                    border-radius: 8px;
-                    text-decoration: none;
-                    font-size: 14px;
-                    margin-right: 10px;
-                  "
-                >
-                  🔗 LinkedIn
-                </a>
-
-                <a
-                  href="https://github.com/sharmag02"
-                  style="
-                    display: inline-block;
-                    background-color: #111827;
-                    color: white;
-                    padding: 10px 18px;
-                    border-radius: 8px;
-                    text-decoration: none;
-                    font-size: 14px;
-                  "
-                >
-                  💻 GitHub
-                </a>
-
-                <p style="
-                  margin-top: 36px;
-                  font-size: 12px;
-                  color: #94a3b8;
-                ">
-                  You received this email because you subscribed to blog updates.<br />
-                  © ${new Date().getFullYear()} Gaurav Kumar
-                </p>
-
-              </div>
-            </div>
-          `,
+          subject: isCommunity
+            ? `🌐 New Community Blog: ${job.title}`
+            : `📝 New Blog Published: ${job.title}`,
+          html,
         });
       }
 
-      // mark job as processed
       await adminClient
         .from("email_queue")
         .update({ processed: true })
         .eq("id", job.id);
     }
 
-    return new Response("Emails sent", { headers: corsHeaders });
-  } catch (err) {
-    console.error("Email error:", err);
-    return new Response("Internal Server Error", {
-      status: 500,
+    return new Response("Newsletter emails sent", {
       headers: corsHeaders,
     });
   }
+
+  return new Response("Invalid request", {
+    status: 400,
+    headers: corsHeaders,
+  });
 });

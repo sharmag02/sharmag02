@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
-import { Edit, PlusCircle, Clock, CheckCircle, XCircle, RefreshCcw } from "lucide-react";
+import {
+  Edit,
+  PlusCircle,
+  Clock,
+  CheckCircle,
+  XCircle,
+  RefreshCcw,
+  Users,
+} from "lucide-react";
 import { supabase } from "../../shared/lib/supabase";
 import { useAuth } from "../../shared/context/AuthContext";
 import CommunityBlogEditor from "./CommunityBlogEditor";
+import { useTheme } from "../../shared/context/ThemeContext";
 
 export default function CommunityDashboard() {
   const { user } = useAuth();
+  const { theme } = useTheme();
 
   const [blogs, setBlogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -13,27 +23,50 @@ export default function CommunityDashboard() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  /* ---------------------------------------------------
-     LOAD USER BLOGS
-  --------------------------------------------------- */
+  /* ---------------- LOAD BLOGS ---------------- */
   const loadBlogs = async () => {
     if (!user) return;
 
     setLoading(true);
 
-    const { data, error } = await supabase
+    const { data: authorBlogs } = await supabase
       .from("community_blogs")
       .select("*")
       .eq("author_id", user.id)
       .order("updated_at", { ascending: false });
 
-    if (error) {
-      console.error("Error loading community blogs:", error);
-      setBlogs([]);
-    } else {
-      setBlogs(data || []);
+    const { data: collabRows } = await supabase
+      .from("blog_collaborators")
+      .select("blog_id")
+      .eq("user_id", user.id)
+      .eq("blog_type", "community");
+
+    let collaboratorBlogs: any[] = [];
+
+    if (collabRows?.length > 0) {
+      const blogIds = collabRows.map((c) => c.blog_id);
+
+      const { data: collabBlogData } = await supabase
+        .from("community_blogs")
+        .select("*")
+        .in("id", blogIds);
+
+      collaboratorBlogs = collabBlogData || [];
     }
 
+    const combined = [
+      ...(authorBlogs || []),
+      ...collaboratorBlogs.map((b) => ({
+        ...b,
+        isCollaborator: true,
+      })),
+    ];
+
+    const uniqueBlogs = Array.from(
+      new Map(combined.map((b) => [b.id, b])).values()
+    );
+
+    setBlogs(uniqueBlogs);
     setLoading(false);
   };
 
@@ -41,18 +74,14 @@ export default function CommunityDashboard() {
     loadBlogs();
   }, [user]);
 
-  /* ---------------------------------------------------
-     SAVE CALLBACK
-  --------------------------------------------------- */
+  /* ---------------- SAVE CALLBACK ---------------- */
   const handleSaved = () => {
     setEditingId(null);
     setIsCreating(false);
     loadBlogs();
   };
 
-  /* ---------------------------------------------------
-     EDITOR VIEW
-  --------------------------------------------------- */
+  /* ---------------- EDITOR VIEW ---------------- */
   if ((isCreating || editingId) && user) {
     return (
       <CommunityBlogEditor
@@ -66,56 +95,61 @@ export default function CommunityDashboard() {
     );
   }
 
-  /* ---------------------------------------------------
-     STATUS BADGE RENDERER
-  --------------------------------------------------- */
+  /* ---------------- STATUS BADGES ---------------- */
   const renderStatus = (blog: any) => {
     switch (blog.status) {
       case "approved":
         return (
-          <span className="flex items-center gap-1 text-green-600 font-medium">
+          <span className="flex items-center gap-1 text-green-500 font-medium">
             <CheckCircle size={16} /> Published
           </span>
         );
-
       case "submitted":
         return (
-          <span className="flex items-center gap-1 text-blue-600 font-medium">
+          <span className="flex items-center gap-1 text-blue-500 font-medium">
             <Clock size={16} /> Under Review
           </span>
         );
-
       case "resubmitted":
         return (
-          <span className="flex items-center gap-1 text-purple-600 font-medium">
+          <span className="flex items-center gap-1 text-purple-500 font-medium">
             <RefreshCcw size={16} /> Resubmitted
           </span>
         );
-
       case "rejected":
         return (
-          <span className="flex items-center gap-1 text-red-600 font-medium">
+          <span className="flex items-center gap-1 text-red-500 font-medium">
             <XCircle size={16} /> Rejected
           </span>
         );
-
       default:
         return <span className="text-yellow-600">Draft</span>;
     }
   };
 
-  /* ---------------------------------------------------
-     UI
-  --------------------------------------------------- */
+  /* ---------------- UI ---------------- */
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div
+      className={`min-h-screen p-6 transition ${
+        theme === "light"
+          ? "bg-gray-100"
+          : "bg-gradient-to-br from-[#0f172a] to-[#020617]"
+      }`}
+    >
       {/* HEADER */}
       <div className="flex justify-between items-center mb-10">
-        <h1 className="text-3xl font-bold dark:text-white">Your Community Blogs</h1>
+        <h1
+          className={`text-3xl font-bold ${
+            theme === "light" ? "text-gray-900" : "text-white"
+          }`}
+        >
+          Your Community Blogs
+        </h1>
 
         <button
           onClick={() => setIsCreating(true)}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-medium shadow-md hover:bg-blue-700 transition"
+          className="flex items-center gap-2 px-6 py-3 rounded-xl
+            bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg transition"
         >
           <PlusCircle size={20} />
           Write New Blog
@@ -125,55 +159,92 @@ export default function CommunityDashboard() {
       {/* LOADING */}
       {loading && (
         <div className="flex justify-center py-20">
-          <div className="animate-spin h-12 w-12 border-b-2 border-blue-600 rounded-full" />
+          <div className="animate-spin h-12 w-12 border-b-2 border-blue-500 rounded-full" />
         </div>
       )}
 
       {/* EMPTY */}
       {!loading && blogs.length === 0 && (
-        <p className="text-center dark:text-gray-400">
-          You haven’t written any community blogs yet.
+        <p
+          className={`text-center ${
+            theme === "light" ? "text-gray-600" : "text-gray-400"
+          }`}
+        >
+          You haven't authored or collaborated on any community blogs yet.
         </p>
       )}
 
       {/* BLOG LIST */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-8 w-full">
         {blogs.map((blog) => (
           <div
             key={blog.id}
-            className="rounded-xl p-6 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 shadow flex flex-col"
+            className={`rounded-xl p-6 transition-all duration-200 flex flex-col
+              ${
+                theme === "light"
+                  ? "bg-white border border-gray-300 shadow-md hover:shadow-xl hover:border-gray-400 hover:scale-[1.01]"
+                  : "bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-slate-700 shadow-lg hover:border-slate-500 hover:shadow-2xl hover:scale-[1.02]"
+              }`}
           >
             {/* TITLE */}
-            <h3 className="text-xl font-bold dark:text-white mb-2">{blog.title}</h3>
+            <h3
+              className={`text-xl font-bold mb-2 ${
+                theme === "light" ? "text-gray-900" : "text-white"
+              }`}
+            >
+              {blog.title}
+            </h3>
 
             {/* EXCERPT */}
-            <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2 mb-4">
+            <p
+              className={`text-sm mb-4 line-clamp-2 ${
+                theme === "light" ? "text-gray-700" : "text-gray-400"
+              }`}
+            >
               {blog.excerpt}
             </p>
 
-            {/* STATUS + EDITED BADGE */}
+            {/* STATUS */}
             <div className="flex items-center justify-between mb-3 text-sm">
               {renderStatus(blog)}
 
-              {/* Edited badge (after approval) */}
-              {blog.is_edited && blog.status === "approved" && (
-                <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
-                  Edited
+              {blog.isCollaborator && (
+                <span
+                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                    theme === "light"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-blue-500/20 text-blue-300"
+                  }`}
+                >
+                  <Users size={12} />
+                  Collaborator
                 </span>
               )}
             </div>
 
-            {/* ADMIN FEEDBACK (only on rejection) */}
+            {/* ADMIN FEEDBACK */}
             {blog.status === "rejected" && blog.admin_feedback && (
-              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm mb-3">
+              <div
+                className={`p-3 rounded-lg text-sm mb-3 ${
+                  theme === "light"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-red-500/10 text-red-300"
+                }`}
+              >
                 <b>Admin feedback:</b>
                 <p>{blog.admin_feedback}</p>
               </div>
             )}
 
-            {/* USER RESUBMISSION NOTE (if resubmitted) */}
+            {/* USER NOTE */}
             {blog.status === "resubmitted" && blog.submission_note && (
-              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-sm mb-3">
+              <div
+                className={`p-3 rounded-lg text-sm mb-3 ${
+                  theme === "light"
+                    ? "bg-purple-100 text-purple-700"
+                    : "bg-purple-500/10 text-purple-300"
+                }`}
+              >
                 <b>Your Resubmission Note:</b>
                 <p>{blog.submission_note}</p>
               </div>
@@ -182,7 +253,11 @@ export default function CommunityDashboard() {
             {/* EDIT BUTTON */}
             <button
               onClick={() => setEditingId(blog.id)}
-              className="mt-auto flex items-center gap-2 px-4 py-2 text-blue-600 dark:text-blue-400 border border-blue-500 dark:border-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              className={`mt-auto flex items-center gap-2 px-4 py-2 rounded-lg transition border ${
+                theme === "light"
+                  ? "text-blue-600 border-blue-600 hover:bg-blue-50"
+                  : "text-blue-400 border-blue-400 hover:bg-blue-500/10"
+              }`}
             >
               <Edit size={16} />
               {blog.status === "approved"

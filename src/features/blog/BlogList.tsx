@@ -16,6 +16,7 @@ interface BaseBlog {
   excerpt?: string;
   author_name?: string;
   type: "blog" | "community";
+  coauthors?: string[];   // ⭐ ADDED
 }
 
 const BLOGS_PER_PAGE = 4;
@@ -28,7 +29,7 @@ const getTextPreview = (html: string, length = 160) => {
 };
 
 export function BlogList() {
-  const { user, profile } = useAuth(); // ✅ profile added
+  const { user, profile } = useAuth();
 
   const [blogs, setBlogs] = useState<BaseBlog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,9 @@ export function BlogList() {
       const from = (page - 1) * BLOGS_PER_PAGE;
       const to = from + BLOGS_PER_PAGE - 1;
 
-      /* ---------- NORMAL BLOGS ---------- */
+      /* ------------------------------------------------------------------
+         FETCH NORMAL BLOGS
+      ------------------------------------------------------------------ */
       const { data: normalBlogs } = await supabase
         .from("blogs")
         .select(`
@@ -71,9 +74,12 @@ export function BlogList() {
           excerpt: b.excerpt,
           author_name: b.profiles?.full_name || b.profiles?.email,
           type: "blog",
+          coauthors: [], // ⭐ No co-authors for normal blogs
         })) || [];
 
-      /* ---------- COMMUNITY BLOGS ---------- */
+      /* ------------------------------------------------------------------
+         FETCH COMMUNITY BLOGS
+      ------------------------------------------------------------------ */
       const { data: communityBlogs } = await supabase
         .from("community_blogs")
         .select(`
@@ -101,8 +107,35 @@ export function BlogList() {
           type: "community",
         })) || [];
 
-      /* ---------- MERGE + SORT ---------- */
-      const allBlogs = [...mappedNormalBlogs, ...mappedCommunityBlogs].sort(
+      /* ------------------------------------------------------------------
+         ⭐ FETCH CO-AUTHORS FOR COMMUNITY BLOGS
+      ------------------------------------------------------------------ */
+      const communityIds = mappedCommunityBlogs.map((b) => b.id);
+
+      const { data: coauthorData } = await supabase
+        .from("blog_collaborators")
+        .select(`blog_id, profiles(full_name,email)`)
+        .in("blog_id", communityIds)
+        .eq("blog_type", "community");
+
+      const communityBlogsWithCoauthors = mappedCommunityBlogs.map((blog) => {
+        const matched = (coauthorData || []).filter(
+          (c) => c.blog_id === blog.id
+        );
+
+        return {
+          ...blog,
+          coauthors: matched.map(
+            (x) => x.profiles?.full_name || x.profiles?.email
+          ),
+        };
+      });
+
+      /* ---------- MERGE ALL BLOGS ---------- */
+      const allBlogs = [
+        ...mappedNormalBlogs,
+        ...communityBlogsWithCoauthors,
+      ].sort(
         (a, b) =>
           new Date(b.created_at).getTime() -
           new Date(a.created_at).getTime()
@@ -130,13 +163,11 @@ export function BlogList() {
       return;
     }
 
-    // ✅ ADMIN → admin panel
     if (profile?.is_admin) {
       navigate("/admin");
       return;
     }
 
-    // ✅ NORMAL USER → community dashboard
     navigate("/community/dashboard");
   };
 
@@ -144,6 +175,7 @@ export function BlogList() {
   return (
     <section className="relative py-10 px-6 bg-slate-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-6xl mx-auto">
+
         {/* HEADER */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold dark:text-white mb-4">
@@ -183,26 +215,42 @@ export function BlogList() {
                   className="group relative p-1 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-[0_0_25px_#3b82f6]"
                 >
                   <div className="rounded-2xl p-6 bg-white dark:bg-gray-800 transform group-hover:scale-105 transition flex flex-col h-full">
+
+                    {/* COMMUNITY TAG */}
                     {blog.type === "community" && (
                       <span className="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-700 mb-2 self-start">
                         Community Blog
                       </span>
                     )}
 
+                    {/* TITLE */}
                     <h3 className="text-xl md:text-2xl font-bold dark:text-white mb-2 group-hover:text-blue-600">
                       {blog.title}
                     </h3>
 
+                    {/* PREVIEW */}
                     <p className="text-gray-600 dark:text-gray-300 text-sm mb-6 line-clamp-3">
                       {getTextPreview(blog.content)}
                     </p>
 
+                    {/* AUTHOR + DATE */}
                     <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 space-y-1">
+
+                      {/* AUTHOR + ⭐ CO-AUTHORS */}
                       <div className="flex items-center gap-2">
                         <User size={14} />
-                        {blog.author_name}
+                        <span>
+                          {blog.author_name}
+                          {blog.coauthors && blog.coauthors.length > 0 && (
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {" · with "}
+                              {blog.coauthors.join(", ")}
+                            </span>
+                          )}
+                        </span>
                       </div>
 
+                      {/* DATE */}
                       <div className="flex items-center gap-2">
                         <Calendar size={14} />
                         {new Date(blog.created_at).toLocaleDateString("en-IN")}
@@ -241,7 +289,7 @@ export function BlogList() {
         )}
       </div>
 
-      {/* FOOTER BUTTONS */}
+      {/* FOOTER BUTTON */}
       <div className="flex flex-col md:flex-row justify-center items-center gap-6 mt-20 mb-10">
         <BlogSubscribe />
 

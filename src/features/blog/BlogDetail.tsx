@@ -271,36 +271,39 @@ export default function BlogDetail() {
         </div>
 
         {/* TABLE OF CONTENTS */}
-        {toc.length > 0 && (
-          <div className="mb-10 p-5 rounded-xl bg-slate-100 dark:bg-slate-800 shadow">
-            <h3 className="text-xl font-semibold mb-3 text-slate-800 dark:text-white">
-              Table of Contents
-            </h3>
+       {/* TOC */}
+{toc.length > 0 && (
+  <div className="mb-10 p-5 rounded-xl bg-slate-100 dark:bg-slate-800 shadow">
+    <h3 className="text-xl font-semibold mb-3 text-slate-800 dark:text-white">
+      Table of Contents
+    </h3>
 
-            <ol className="space-y-2 ml-1">
-              {toc.map((item) => (
-                <li
-                  key={item.id}
-                  className={`cursor-pointer hover:text-blue-500 transition ${
-                    item.level === 2
-                      ? "ml-4"
-                      : item.level === 3
-                      ? "ml-8"
-                      : ""
-                  }`}
-                  onClick={() =>
-                    document.getElementById(item.id)?.scrollIntoView({
-                      behavior: "smooth",
-                    })
-                  }
-                >
-                  <span className="font-semibold mr-2">{item.index}</span>
-                  {item.text}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+    <ol className="blog-toc space-y-2 ml-1">
+      {toc.map((item) => (
+        <li
+          key={item.id}
+          className={`
+            cursor-pointer
+            hover:text-blue-400
+            dark:hover:text-blue-300
+            transition
+            ${item.level === 2 ? "ml-4" : ""}
+            ${item.level === 3 ? "ml-8" : ""}
+          `}
+          onClick={() =>
+            document.getElementById(item.id)?.scrollIntoView({
+              behavior: "smooth",
+            })
+          }
+        >
+          <span className="font-semibold mr-2">{item.index}</span>
+          {item.text}
+        </li>
+      ))}
+    </ol>
+  </div>
+)}
+
 
         {/* CONTENT */}
         <div

@@ -4,175 +4,179 @@ import {
   Heart,
   Share2,
   ArrowLeft,
-  Pencil,
   Trash2,
+  Pencil,
   ShieldCheck,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../shared/lib/supabase";
-import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../shared/context/AuthContext";
+import { useParams, useNavigate } from "react-router-dom";
 
-export default function CommunityBlogDetail() {
-  const { slug } = useParams();
-  const navigate = useNavigate();
+/* ---------------- TYPES ---------------- */
+
+interface BlogDetailType {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  published_at?: string;
+  likes: number;
+  profiles: {
+    full_name: string | null;
+    email: string;
+  } | null;
+}
+
+interface CommentType {
+  id: string;
+  content: string;
+  user_id: string;
+  created_at: string;
+  profiles: {
+    full_name: string | null;
+    email: string;
+    is_admin?: boolean;
+  } | null;
+}
+
+/* ---------------- COMPONENT ---------------- */
+
+export default function BlogDetail() {
   const { user, profile } = useAuth();
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
 
-  const [blog, setBlog] = useState<any>(null);
+  const [blog, setBlog] = useState<BlogDetailType | null>(null);
   const [likes, setLikes] = useState(0);
+  const [comments, setComments] = useState<CommentType[]>([]);
+  const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // COMMENTS
-  const [comments, setComments] = useState<any[]>([]);
-  const [newComment, setNewComment] = useState("");
+  // ⭐ Coauthors
+  const [coauthors, setCoauthors] = useState<any[]>([]);
+
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // TOC
+  /* ========= ToC ========= */
   const contentRef = useRef<HTMLDivElement>(null);
   const [toc, setToc] = useState<
     { id: string; text: string; level: number; index: string }[]
   >([]);
 
-  /* ---------------------------------------------------
-     LOAD BLOG (APPROVED ONLY)
-  --------------------------------------------------- */
+  /* ---------------- LOAD BLOG + COAUTHORS ---------------- */
+
   useEffect(() => {
     if (!slug) return;
 
     const loadBlog = async () => {
       setLoading(true);
+
       const { data, error } = await supabase
-        .from("community_blogs")
-        .select(
-          `
-          *,
-          profiles:profiles!community_blogs_author_id_fkey(full_name,email)
-        `
-        )
+        .from("blogs")
+        .select(`
+          id,
+          title,
+          content,
+          created_at,
+          published_at,
+          likes,
+          profiles(full_name, email)
+        `)
         .eq("slug", slug)
-        .eq("status", "approved")
-        .single();
+        .eq("published", true)
+        .maybeSingle(); // ⭐ FIXED
 
       if (error || !data) {
-        console.error("Error loading blog:", error);
-        navigate("/community-blog");
+        navigate("/blog");
         return;
       }
 
       setBlog(data);
       setLikes(data.likes ?? 0);
+
+      // ⭐ Load coauthors for normal blog
+      const { data: coauthorList } = await supabase
+        .from("blog_collaborators")
+        .select(`profiles(full_name,email)`)
+        .eq("blog_id", data.id)
+        .eq("blog_type", "normal");
+
+      setCoauthors(coauthorList || []);
+
       setLoading(false);
     };
 
     loadBlog();
   }, [slug, navigate]);
 
-  /* ---------------------------------------------------
-     LOAD COMMENTS
-  --------------------------------------------------- */
-  const loadComments = async (blogId: string) => {
-    const { data, error } = await supabase
-      .from("community_comments")
-      .select("*, profiles(full_name,email,is_admin)")
-      .eq("community_blog_id", blogId)
-      .order("created_at", { ascending: false });
+  /* ---------------- LOAD COMMENTS ---------------- */
 
-    if (error) {
-      console.error("Failed to load community comments:", error);
-      return;
-    }
+  const loadComments = async (blogId: string) => {
+    const { data } = await supabase
+      .from("comments")
+      .select("*, profiles(full_name,email,is_admin)")
+      .eq("blog_id", blogId)
+      .order("created_at", { ascending: false });
 
     setComments(data || []);
   };
 
   useEffect(() => {
-    if (blog?.id) loadComments(blog.id);
+    if (blog) loadComments(blog.id);
   }, [blog]);
 
-  /* ---------------------------------------------------
-     ADD COMMENT
-  --------------------------------------------------- */
+  /* ---------------- LIKE ---------------- */
+
+  const handleLike = async () => {
+    if (!blog || !user) return alert("Login to like the post");
+
+    const liked = sessionStorage.getItem(`liked_${blog.id}`);
+    if (liked) return;
+
+    await supabase.from("blogs").update({ likes: likes + 1 }).eq("id", blog.id);
+
+    sessionStorage.setItem(`liked_${blog.id}`, "true");
+    setLikes((l) => l + 1);
+  };
+
+  /* ---------------- COMMENT ACTIONS ---------------- */
+
   const handleComment = async () => {
     if (!user || !newComment.trim() || !blog) return;
 
-    const { error } = await supabase.from("community_comments").insert({
-      community_blog_id: blog.id,
+    await supabase.from("comments").insert({
+      blog_id: blog.id,
       user_id: user.id,
       content: newComment.trim(),
     });
-
-    if (error) {
-      console.error("Failed to insert community comment:", error);
-      return;
-    }
 
     setNewComment("");
     loadComments(blog.id);
   };
 
-  /* ---------------------------------------------------
-     EDIT COMMENT
-  --------------------------------------------------- */
   const saveEdit = async () => {
     if (!editId || !editText.trim()) return;
 
-    const { error } = await supabase
-      .from("community_comments")
-      .update({ content: editText })
-      .eq("id", editId);
-
-    if (error) {
-      console.error("Failed to edit comment:", error);
-      return;
-    }
+    await supabase.from("comments").update({ content: editText }).eq("id", editId);
 
     setEditId(null);
     setEditText("");
-    loadComments(blog.id);
+    loadComments(blog!.id);
   };
 
-  /* ---------------------------------------------------
-     DELETE COMMENT
-  --------------------------------------------------- */
   const confirmDelete = async () => {
-    if (!deleteId || !blog) return;
+    if (!deleteId) return;
 
-    const { error } = await supabase
-      .from("community_comments")
-      .delete()
-      .eq("id", deleteId);
-
-    if (error) {
-      console.error("Failed to delete comment:", error);
-      return;
-    }
-
+    await supabase.from("comments").delete().eq("id", deleteId);
     setDeleteId(null);
-    loadComments(blog.id);
+    loadComments(blog!.id);
   };
 
-  /* ---------------------------------------------------
-     LIKE
-  --------------------------------------------------- */
-  const handleLike = async () => {
-    if (!user) return alert("Login first");
+  /* ---------------- TOC ---------------- */
 
-    if (sessionStorage.getItem(`community_like_${blog.id}`)) return;
-
-    await supabase
-      .from("community_blogs")
-      .update({ likes: likes + 1 })
-      .eq("id", blog.id);
-
-    sessionStorage.setItem(`community_like_${blog.id}`, "true");
-    setLikes((l) => l + 1);
-  };
-
-  /* ---------------------------------------------------
-     TOC GENERATION
-  --------------------------------------------------- */
   useEffect(() => {
     if (!blog?.content) return;
 
@@ -183,42 +187,36 @@ export default function CommunityBlogDetail() {
       h2 = 0,
       h3 = 0;
 
-    const headings = Array.from(div.querySelectorAll("h1, h2, h3")).map(
-      (el) => {
-        const level = Number(el.tagName.replace("H", ""));
-        const text = el.textContent || "";
-        const id = text.toLowerCase().replace(/\s+/g, "-");
+    const found = Array.from(div.querySelectorAll("h1, h2, h3")).map((el) => {
+      const level = Number(el.tagName.replace("H", ""));
+      const text = el.textContent?.trim() || "";
+      const id = text.toLowerCase().replace(/\s+/g, "-");
 
-        let index = "";
-        if (level === 1) {
-          h1++;
-          h2 = 0;
-          h3 = 0;
-          index = `${h1}`;
-        } else if (level === 2) {
-          h2++;
-          index = `${h1}.${h2}`;
-        } else {
-          h3++;
-          index = `${h1}.${h2}.${h3}`;
-        }
-
-        return { id, text, level, index };
+      let index = "";
+      if (level === 1) {
+        h1++;
+        h2 = h3 = 0;
+        index = `${h1}`;
+      } else if (level === 2) {
+        h2++;
+        index = `${h1}.${h2}`;
+      } else {
+        h3++;
+        index = `${h1}.${h2}.${h3}`;
       }
-    );
 
-    setToc(headings);
+      return { id, text, level, index };
+    });
+
+    setToc(found);
   }, [blog]);
 
-  /* ---------------------------------------------------
-     ASSIGN IDs TO REAL DOM
-  --------------------------------------------------- */
   useEffect(() => {
     if (!contentRef.current) return;
 
     toc.forEach((item) => {
-      const els = contentRef.current.querySelectorAll(`h${item.level}`);
-      els.forEach((el) => {
+      const elements = contentRef.current!.querySelectorAll(`h${item.level}`);
+      elements.forEach((el) => {
         if (el.textContent?.trim() === item.text.trim()) {
           el.setAttribute("id", item.id);
         }
@@ -226,48 +224,86 @@ export default function CommunityBlogDetail() {
     });
   }, [toc]);
 
-  /* ---------------------------------------------------
-     UI
-  --------------------------------------------------- */
+  /* ---------------- AUTHOR INFO ---------------- */
 
-  if (loading) return <p className="text-center mt-20">Loading…</p>;
+  const authorName =
+    blog?.profiles?.full_name || blog?.profiles?.email || "Author";
+
+  const coauthorNames = coauthors
+    .map((c) => c.profiles?.full_name || c.profiles?.email)
+    .filter(Boolean);
+
+  /* ---------------- UI ---------------- */
+
+  if (loading) return <p className="text-center mt-16">Loading blog…</p>;
   if (!blog) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
-      {/* BACK */}
+    <div className="max-w-5xl mx-auto px-4 py-12">
+      {/* Back */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 mb-8 text-slate-600 dark:text-slate-300"
+        className="flex items-center gap-2 mb-8 text-slate-600 dark:text-slate-300 hover:text-blue-500"
       >
         <ArrowLeft size={18} /> Back
       </button>
 
       <article className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl p-10 leading-relaxed">
+
         {/* TITLE */}
-        <h1 className="text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100">
+        <h1 className="text-4xl font-bold mb-6 text-slate-900 dark:text-slate-100">
           {blog.title}
         </h1>
 
-        {/* META */}
-        <div className="flex gap-6 text-sm text-slate-600 dark:text-slate-400 mb-8">
-          <span className="flex items-center gap-1">
-            <User size={16} />
-            {blog.profiles?.full_name || blog.profiles?.email}
-          </span>
+        {/* ⭐ AUTHOR + COAUTHORS */}
+        <div className="flex items-center gap-4 mb-10 pb-6 border-b border-slate-200 dark:border-slate-800">
+          {/* Avatars */}
+          <div className="flex -space-x-3">
+            {/* Main Author */}
+            <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-semibold ring-2 ring-white dark:ring-slate-900">
+              {authorName[0]?.toUpperCase()}
+            </div>
 
-          <span className="flex items-center gap-1">
-            <Calendar size={16} />
-            {new Date(blog.published_at).toLocaleDateString("en-IN")}
-          </span>
+            {/* Coauthors */}
+            {coauthorNames.slice(0, 3).map((name, i) => (
+              <div
+                key={i}
+                className="w-12 h-12 rounded-full bg-slate-400 text-white flex items-center justify-center text-lg font-semibold ring-2 ring-white dark:ring-slate-900"
+              >
+                {name[0]?.toUpperCase()}
+              </div>
+            ))}
+          </div>
+
+          {/* Text */}
+          <div className="flex flex-col">
+            <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Written by
+            </span>
+
+            <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              {authorName}
+              {coauthorNames.length > 0 && (
+                <span className="font-normal text-slate-600 dark:text-slate-400">
+                  {" "}· with {coauthorNames.join(", ")}
+                </span>
+              )}
+            </span>
+
+            <span className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              <Calendar size={14} />
+              Published on{" "}
+              {new Date(blog.published_at || blog.created_at).toLocaleDateString(
+                "en-IN",
+                { day: "numeric", month: "short", year: "numeric" }
+              )}
+            </span>
+          </div>
         </div>
 
-        {/* LIKE + SHARE */}
+        {/* ACTIONS */}
         <div className="flex gap-6 mb-10">
-          <button
-            onClick={handleLike}
-            className="flex items-center gap-2 text-red-500 hover:scale-105 transition"
-          >
+          <button onClick={handleLike} className="flex items-center gap-2 text-red-500 hover:scale-105 transition">
             <Heart size={20} /> {likes}
           </button>
 
@@ -282,15 +318,15 @@ export default function CommunityBlogDetail() {
         {/* TOC */}
         {toc.length > 0 && (
           <div className="mb-10 p-5 rounded-xl bg-slate-100 dark:bg-slate-800 shadow">
-            <h3 className="text-xl font-semibold mb-3 dark:text-white">
+            <h3 className="text-xl font-semibold mb-3 text-slate-800 dark:text-white">
               Table of Contents
             </h3>
 
-            <ol className="space-y-2 ml-1">
+            <ol className="space-y-2 ml-1 text-slate-700 dark:text-slate-300">
               {toc.map((item) => (
                 <li
                   key={item.id}
-                  className={`cursor-pointer hover:text-blue-500 transition ${
+                  className={`cursor-pointer hover:text-blue-400 dark:hover:text-blue-300 transition ${
                     item.level === 2
                       ? "ml-4"
                       : item.level === 3
@@ -298,9 +334,9 @@ export default function CommunityBlogDetail() {
                       : ""
                   }`}
                   onClick={() =>
-                    document
-                      .getElementById(item.id)
-                      ?.scrollIntoView({ behavior: "smooth" })
+                    document.getElementById(item.id)?.scrollIntoView({
+                      behavior: "smooth",
+                    })
                   }
                 >
                   <span className="font-semibold mr-2">{item.index}</span>
@@ -320,9 +356,7 @@ export default function CommunityBlogDetail() {
 
         {/* COMMENTS */}
         <div className="mt-16">
-          <h3 className="text-2xl font-semibold mb-6 dark:text-slate-100">
-            Comments
-          </h3>
+          <h3 className="text-2xl font-semibold mb-6 dark:text-slate-100">Comments</h3>
 
           {/* ADD COMMENT */}
           {user && (
@@ -331,27 +365,24 @@ export default function CommunityBlogDetail() {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Write a comment..."
-                className="w-full p-4 rounded-xl border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full p-4 rounded-xl border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700"
               />
               <button
                 onClick={handleComment}
-                className="mt-4 bg-blue-600 hover:bg-blue-500 transition text-white px-5 py-2 rounded-xl"
+                className="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl"
               >
                 Post Comment
               </button>
             </div>
           )}
 
-          {/* COMMENTS LIST */}
+          {/* COMMENT LIST */}
           {comments.map((c) => {
             const isOwner = user?.id === c.user_id;
             const isAdmin = profile?.is_admin;
 
             return (
-              <div
-                key={c.id}
-                className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 mb-4"
-              >
+              <div key={c.id} className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 mb-4">
                 <div className="flex justify-between items-center mb-1">
                   <div className="flex items-center gap-2">
                     <p className="font-medium dark:text-slate-200">
@@ -391,7 +422,7 @@ export default function CommunityBlogDetail() {
                     <textarea
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
-                      className="w-full mt-2 p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                      className="w-full mt-2 p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
                     />
                     <button
                       onClick={saveEdit}

@@ -25,6 +25,7 @@ export default function CommunityBlogReview({
         .select(`
           id,
           title,
+          slug,
           content,
           excerpt,
           status,
@@ -64,15 +65,15 @@ export default function CommunityBlogReview({
       status: "approved",
       admin_feedback: adminFeedback || null,
       updated_at: new Date().toISOString(),
-      submission_note: null, // clear after approval
+      submission_note: null,
     };
 
-    // FIRST TIME PUBLISH
-    if (!blog.published_at) {
+    const isFirstPublish = !blog.published_at;
+
+    if (isFirstPublish) {
       updates.published_at = new Date().toISOString();
-      updates.is_edited = false; // no edit badge for first publish
+      updates.is_edited = false;
     } else {
-      // Approving a resubmission
       updates.is_edited = true;
     }
 
@@ -85,6 +86,44 @@ export default function CommunityBlogReview({
       alert("Failed to approve blog: " + error.message);
       return;
     }
+
+    /* ---------------------------------------------------
+       EMAIL QUEUE (FIRST PUBLISH ONLY — AUTO TRIGGER)
+    --------------------------------------------------- */
+    /* ---------------------------------------------------
+   EMAIL QUEUE + IMMEDIATE EDGE FUNCTION CALL
+   (FIRST PUBLISH ONLY)
+--------------------------------------------------- */
+if (isFirstPublish) {
+  try {
+    const { error: queueError } = await supabase
+      .from("email_queue")
+      .insert({
+        source: "community_blog",
+        title: blog.title,
+        excerpt: blog.excerpt,
+        slug: blog.slug,
+      });
+
+    if (queueError) {
+      console.error("❌ Email queue insert failed:", queueError);
+    } else {
+      // 🔐 ADMIN JWT
+      const { data: session } = await supabase.auth.getSession();
+
+      // 🚀 CALL SEND-EMAIL EDGE FUNCTION
+      await supabase.functions.invoke("send-email", {
+        body: { type: "process-email-queue" },
+        headers: {
+          Authorization: `Bearer ${session?.session?.access_token}`,
+        },
+      });
+    }
+  } catch (e) {
+    console.error("❌ Email queue error:", e);
+  }
+}
+
 
     onSave();
   };
@@ -152,7 +191,7 @@ export default function CommunityBlogReview({
           </div>
         </div>
 
-        {/* USER'S SUBMISSION NOTE (resubmitted) */}
+        {/* USER'S SUBMISSION NOTE */}
         {blog.submission_note && (
           <div className="p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 
             border border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200"
