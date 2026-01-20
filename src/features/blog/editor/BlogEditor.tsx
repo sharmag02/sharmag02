@@ -127,6 +127,8 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
 
   const editorRef = useRef(null);
   const originalContentRef = useRef("");
+  const originalSlugRef = useRef("");
+
   const wasPublishedRef = useRef(false);
 
 
@@ -155,15 +157,15 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
         .eq("id", realBlogId)
         .single();
 
-      if (data) {
-        setTitle(data.title);
-        setExcerpt(data.excerpt);
-        setContent(data.content);
-        setStatus(data.status);
-        originalContentRef.current = data.content;
-        wasPublishedRef.current = data.published === true;
-
-      }
+    if (data) {
+  setTitle(data.title);
+  setExcerpt(data.excerpt);
+  setContent(data.content);
+  setStatus(data.status);
+  originalContentRef.current = data.content;
+  wasPublishedRef.current = data.published === true;
+  originalSlugRef.current = data.slug;   // <-- ADD THIS
+}
 
       const { data: collab } = await supabase
         .from("blog_collaborators")
@@ -253,8 +255,6 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
     setHasPendingInvite(false);
   };
 
-  /* ---------------- SAVE HANDLER ---------------- */
- /* ---------------- SAVE HANDLER ---------------- */
 /* ---------------- SAVE HANDLER ---------------- */
 const handleSaveInternal = async (requestedStatus, submissionNote = null) => {
   setLoading(true);
@@ -291,10 +291,12 @@ const handleSaveInternal = async (requestedStatus, submissionNote = null) => {
 
       /* -------- EMAIL QUEUE (AUTO TRIGGER HANDLES SENDING) -------- */
    
-const shouldSendEmail =
+const shouldSendEmailOnCreate =
   requestedStatus === "published" && wasPublishedRef.current === false;
 
-if (shouldSendEmail) {
+
+if (shouldSendEmailOnCreate) {
+
   const { error: queueError } = await supabase.from("email_queue").insert({
     source: "blog",
     title,
@@ -366,15 +368,22 @@ if (shouldSendEmail) {
     };
 
     await supabase.from("blogs").update(updateDataAdmin).eq("id", realBlogId);
+    // Keep ref in sync with DB
+
+
 
     /* -------- EMAIL QUEUE (AUTO TRIGGER HANDLES SENDING) -------- */
     /* -------- EMAIL QUEUE + CALL EDGE FUNCTION -------- */
-if (requestedStatus === "published") {
+const shouldSendEmail =
+  requestedStatus === "published" && wasPublishedRef.current === false;
+
+if (shouldSendEmail) {
   const { error: queueError } = await supabase.from("email_queue").insert({
     source: "blog",
     title,
     excerpt,
-    slug: generateSlug(title),
+   slug: originalSlugRef.current,
+
   });
 
   if (!queueError) {
@@ -386,8 +395,12 @@ if (requestedStatus === "published") {
         Authorization: `Bearer ${session?.session?.access_token}`,
       },
     });
+
+    // VERY IMPORTANT: lock so email never sends again
+    wasPublishedRef.current = true;
   }
 }
+
 
 
     alert(
