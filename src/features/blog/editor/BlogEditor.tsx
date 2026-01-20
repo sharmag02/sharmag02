@@ -127,6 +127,8 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
 
   const editorRef = useRef(null);
   const originalContentRef = useRef("");
+  const wasPublishedRef = useRef(false);
+
 
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
@@ -159,6 +161,8 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
         setContent(data.content);
         setStatus(data.status);
         originalContentRef.current = data.content;
+        wasPublishedRef.current = data.published === true;
+
       }
 
       const { data: collab } = await supabase
@@ -286,13 +290,16 @@ const handleSaveInternal = async (requestedStatus, submissionNote = null) => {
       }
 
       /* -------- EMAIL QUEUE (AUTO TRIGGER HANDLES SENDING) -------- */
-     /* -------- EMAIL QUEUE + CALL EDGE FUNCTION -------- */
-if (requestedStatus === "published") {
+   
+const shouldSendEmail =
+  requestedStatus === "published" && wasPublishedRef.current === false;
+
+if (shouldSendEmail) {
   const { error: queueError } = await supabase.from("email_queue").insert({
     source: "blog",
     title,
     excerpt,
-    slug,
+    slug: generateSlug(title),
   });
 
   if (!queueError) {
@@ -304,6 +311,8 @@ if (requestedStatus === "published") {
         Authorization: `Bearer ${session?.session?.access_token}`,
       },
     });
+
+    wasPublishedRef.current = true;   // IMPORTANT: Lock so email never sends again
   }
 }
 

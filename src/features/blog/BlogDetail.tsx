@@ -64,6 +64,25 @@ export default function BlogDetail() {
     { id: string; text: string; level: number; index: string }[]
   >([]);
 
+  // ADD THIS - UNIQUE HEADING ID GENERATOR
+const addHeadingIds = (html: string) => {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+
+  let count = 0;
+
+  div.querySelectorAll("h1, h2, h3").forEach((el) => {
+    const text = el.textContent?.trim() || "section";
+    const id =
+      text.toLowerCase().replace(/[^\w]+/g, "-") + "-" + count++;
+
+    el.setAttribute("id", id);
+  });
+
+  return div.innerHTML;
+};
+
+
   /* ---------------- LOAD BLOG ---------------- */
 
   /* ---------------- LOAD COMMUNITY BLOG + COAUTHORS ---------------- */
@@ -88,7 +107,11 @@ useEffect(() => {
       return;
     }
 
-    setBlog(data);
+    setBlog({
+  ...data,
+  content: addHeadingIds(data.content),
+});
+
     setLikes(data.likes ?? 0);
 
     // Load coauthors
@@ -119,7 +142,8 @@ useEffect(() => {
     const found = Array.from(div.querySelectorAll("h1, h2, h3")).map((el) => {
       const level = Number(el.tagName.replace("H", ""));
       const text = el.textContent?.trim() || "";
-      const id = text.toLowerCase().replace(/\s+/g, "-");
+     const id = el.getAttribute("id") || "";
+
 
       let index = "";
 
@@ -143,20 +167,7 @@ useEffect(() => {
     setToc(found);
   }, [blog]);
 
-  /* ---------- Inject IDs into actual DOM ---------- */
-  useEffect(() => {
-    if (!contentRef.current) return;
-
-    toc.forEach((item) => {
-      const elements = contentRef.current!.querySelectorAll(`h${item.level}`);
-
-      elements.forEach((el) => {
-        if (el.textContent?.trim() === item.text.trim()) {
-          el.setAttribute("id", item.id);
-        }
-      });
-    });
-  }, [toc]);
+ 
 
   /* ---------------- LOAD COMMENTS ---------------- */
 
@@ -248,15 +259,45 @@ const coauthorNames = coauthors
 
   /* ---------------- UI ---------------- */
 
+     const handleShare = async () => {
+  const url = window.location.href;
+
+  // Native share (mobile)
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: blog.title,
+        text: "Check out this blog!",
+        url,
+      });
+      return;
+    } catch {}
+  }
+
+  // Clipboard fallback
+  try {
+    await navigator.clipboard.writeText(url);
+    alert("Link copied to clipboard!");
+  } catch {
+    alert("Failed to copy. Please manually copy the link.");
+  }
+};
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
       {/* Back */}
       <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 mb-8 text-slate-600 dark:text-slate-300 hover:text-blue-500"
-      >
-        <ArrowLeft size={18} /> Back
-      </button>
+  onClick={() => navigate(-1)}
+  className="
+    flex items-center gap-2 mb-8
+    text-slate-700 hover:text-blue-500
+    dark:text-slate-600 dark:hover:text-blue-400
+    font-medium
+  "
+>
+  <ArrowLeft size={18} /> Back
+</button>
+
 
       <article className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl p-10 leading-relaxed">
         <h1 className="text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100">
@@ -308,17 +349,7 @@ const coauthorNames = coauthors
             </span>
           </div>
         </div>
-        {/* META */}
-        <div className="flex gap-6 text-sm text-slate-600 dark:text-slate-400 mb-8">
-          <span className="flex items-center gap-1">
-            <User size={16} />
-            {blog.profiles?.full_name || "Anonymous"}
-          </span>
-          <span className="flex items-center gap-1">
-            <Calendar size={16} />
-            {new Date(blog.created_at).toLocaleDateString("en-IN")}
-          </span>
-        </div>
+        
 
         {/* ACTIONS */}
         <div className="flex gap-6 mb-10">
@@ -329,14 +360,13 @@ const coauthorNames = coauthors
             <Heart size={20} /> {likes}
           </button>
 
-          <button
-            onClick={() =>
-              navigator.clipboard.writeText(window.location.href)
-            }
-            className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-400 transition"
-          >
-            <Share2 size={20} /> Share
-          </button>
+         <button
+  onClick={handleShare}
+  className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-400 transition"
+>
+  <Share2 size={20} /> Share
+</button>
+
         </div>
 
         {/* TABLE OF CONTENTS */}
@@ -407,6 +437,8 @@ const coauthorNames = coauthors
           {comments.map((c) => {
             const isOwner = user?.id === c.user_id;
             const isAdmin = profile?.is_admin;
+
+         
 
             return (
               <div
