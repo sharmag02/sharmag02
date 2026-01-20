@@ -165,7 +165,7 @@ export function About() {
                   degree:
                     "Bachelor of Technology — B.Tech, Electronics and Communication Engineering",
                   period: "Nov 2022 – Apr 2026",
-                  grade: "8.70 CGPA (6th Sem)",
+                  grade: "8.85 CGPA (7th Sem)",
                   activities: [
                     "Student Coordinator — Departmental Official Newsletter (The Flip Flops)",
                     "University Runner-Up Basketball (Khelo Bharat GGV)",
@@ -176,7 +176,7 @@ export function About() {
                   certificates: [
                     {
                       label: "B.Tech Result Certificate",
-                      link: "pdf/6th sem marksheet.pdf",
+                      link: "pdf/7th Sem marksheet.pdf",
                     },
                     {
                       label: "Basketball Runner-Up Certificate",
