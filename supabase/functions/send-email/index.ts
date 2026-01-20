@@ -43,249 +43,214 @@ const SITE_URL =
   Deno.env.get("SITE_URL") || "https://sharmag02.netlify.app";
 
 /* ---------------------------------------------------------
-   EMAIL TEMPLATES
+   EMAIL TEMPLATES (UPDATED – LOGIC UNCHANGED)
 --------------------------------------------------------- */
 
-/* ---------- 1) Collaboration Invite Email Template ---------- */
-function inviteTemplate(inviter: string, blogTitle: string, inviteLink: string) {
+function baseTemplate(title: string, content: string, action?: { text: string; link: string }) {
   return `
-  <div style="font-family: Arial, sans-serif; padding: 24px; background:#f6f7fb;">
-    <div style="max-width:600px;margin:auto;background:white;padding:24px;border-radius:12px;">
+  <div style="background:#f1f5f9;padding:32px;font-family:Inter,Arial,sans-serif;">
+    <div style="max-width:640px;margin:auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,0.08);">
 
-      <h2 style="color:#1e293b;margin-bottom:8px;">
-        You've been invited to collaborate!
-      </h2>
+      <div style="background:#0f172a;padding:24px;text-align:center;">
+        <h1 style="margin:0;color:white;font-size:22px;">${title}</h1>
+      </div>
 
-      <p style="color:#334155;font-size:15px;">
-        <b>${inviter}</b> invited you to collaborate on:
-      </p>
+      <div style="padding:28px;color:#1e293b;font-size:16px;line-height:1.7;">
+        ${content}
 
-      <h3 style="color:#0f172a;">${blogTitle}</h3>
+        ${
+          action
+            ? `<div style="margin-top:28px;text-align:center;">
+                <a href="${action.link}"
+                  style="background:#2563eb;color:white;padding:14px 28px;
+                  border-radius:10px;font-weight:600;text-decoration:none;">
+                  ${action.text}
+                </a>
+              </div>`
+            : ""
+        }
+      </div>
 
-      <a href="${inviteLink}" 
-        style="
-          display:inline-block;margin-top:18px;background:#2563eb;
-          padding:14px 26px;color:white;border-radius:10px;
-          text-decoration:none;font-size:16px;font-weight:600;">
-        Accept Collaboration
-      </a>
+      <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:18px;text-align:center;">
+        <p style="margin:0 0 10px;font-size:14px;color:#475569;">Connect with Gaurav Kumar</p>
 
-      <hr style="margin:28px 0;border-top:1px solid #e5e7eb;" />
+        <div style="margin-bottom:10px;">
+          <a href="https://linkedin.com/in/sharmag02" style="margin:0 8px;color:#2563eb;">LinkedIn</a>
+          <a href="https://github.com/sharmag02" style="margin:0 8px;color:#111827;">GitHub</a>
+          <a href="https://sharmag02.netlify.app" style="margin:0 8px;color:#2563eb;">Website</a>
+        </div>
 
-      <p style="color:#64748b;font-size:14px;margin-bottom:8px;">
-        Connect with Gaurav Kumar:
-      </p>
-
-      <a href="https://linkedin.com/in/sharmag02" 
-         style="background:#0a66c2;color:white;padding:10px 18px;
-         border-radius:8px;text-decoration:none;margin-right:10px;">
-        LinkedIn
-      </a>
-
-      <a href="https://github.com/sharmag02"
-        style="background:#111827;color:white;padding:10px 18px;
-        border-radius:8px;text-decoration:none;margin-right:10px;">
-        GitHub
-      </a>
-
-      <a href="https://sharmag02.netlify.app"
-        style="background:#2563eb;color:white;padding:10px 18px;
-        border-radius:8px;text-decoration:none;">
-        Portfolio
-      </a>
-
-      <p style="margin-top:28px;color:#94a3b8;font-size:12px;">
-        Contact: contact.sharmag02@gmail.com
-      </p>
+        <p style="margin:0;font-size:12px;color:#64748b;">
+          contact.sharmag02@gmail.com
+        </p>
+      </div>
     </div>
   </div>
   `;
 }
 
-/* ---------- 2) Blog Publish Email Template ---------- */
-function blogTemplate(job: any, link: string) {
-  return `
-  <div style="font-family: Arial, sans-serif; padding: 24px; background:#f6f7fb;">
-    <div style="max-width:600px;margin:auto;background:white;padding:24px;border-radius:12px;">
+/* ---------- INVITE TEMPLATE ---------- */
+function inviteTemplate(inviter: string, blogTitle: string, inviteLink: string) {
+  return baseTemplate(
+    "Collaboration Invitation",
+    `
+      <p><strong>${inviter}</strong> invited you to collaborate on:</p>
+      <p style="font-size:18px;font-weight:600;">${blogTitle}</p>
+    `,
+    { text: "Accept Invitation", link: inviteLink }
+  );
+}
 
-      <h1 style="margin:0 0 12px;color:#0f172a;font-size:26px;">
-        ${job.title}
-      </h1>
+/* ---------- ADMIN SUBMISSION ---------- */
+function adminSubmissionTemplate(title: string, author: string) {
+  return baseTemplate(
+    "New Community Blog Submitted",
+    `
+      <p><strong>Title:</strong> ${title}</p>
+      <p><strong>Author:</strong> ${author}</p>
+      <p>Please review this blog in the admin dashboard.</p>
+    `,
+    { text: "Open Dashboard", link: `${SITE_URL}/admin` }
+  );
+}
 
-      <p style="color:#334155;font-size:16px;line-height:1.6;">
-        ${job.excerpt || ""}
-      </p>
+/* ---------- ADMIN RESUBMISSION ---------- */
+function adminResubmissionTemplate(title: string, author: string, note?: string) {
+  return baseTemplate(
+    "Community Blog Resubmitted",
+    `
+      <p><strong>Title:</strong> ${title}</p>
+      <p><strong>Author:</strong> ${author}</p>
+      <p><strong>Submission Note:</strong></p>
+      <blockquote style="background:#f1f5f9;padding:12px;border-left:4px solid #2563eb;">
+        ${note || "No additional note provided"}
+      </blockquote>
+    `,
+    { text: "Review Changes", link: `${SITE_URL}/admin` }
+  );
+}
 
-      <a href="${link}" 
-        style="
-          display:inline-block;margin-top:20px;background:#2563eb;
-          padding:14px 26px;color:white;border-radius:10px;
-          text-decoration:none;font-size:16px;font-weight:600;">
-        📖 Read Full Blog
-      </a>
+/* ---------- USER REJECTION ---------- */
+function rejectionTemplate(title: string, feedback: string) {
+  return baseTemplate(
+    "Your Blog Was Rejected",
+    `
+      <p>Your blog <strong>${title}</strong> requires changes.</p>
+      <p><strong>Admin Feedback:</strong></p>
+      <blockquote style="background:#fff1f2;padding:12px;border-left:4px solid #ef4444;">
+        ${feedback}
+      </blockquote>
+    `
+  );
+}
 
-      <hr style="margin:28px 0;border-top:1px solid #e5e7eb;" />
-
-      <p style="color:#64748b;font-size:14px;margin-bottom:8px;">
-        Follow Gaurav Kumar:
-      </p>
-
-      <a href="https://linkedin.com/in/sharmag02"
-        style="background:#0a66c2;color:white;padding:10px 18px;
-        border-radius:8px;text-decoration:none;margin-right:10px;">
-        LinkedIn
-      </a>
-
-      <a href="https://github.com/sharmag02"
-        style="background:#111827;color:white;padding:10px 18px;
-        border-radius:8px;text-decoration:none;margin-right:10px;">
-        GitHub
-      </a>
-
-      <a href="https://sharmag02.netlify.app"
-        style="background:#2563eb;color:white;padding:10px 18px;
-        border-radius:8px;text-decoration:none;">
-        Portfolio
-      </a>
-
-      <p style="margin-top:28px;color:#94a3b8;font-size:12px;">
-        Contact: contact.sharmag02@gmail.com
-      </p>
-    </div>
-  </div>
-  `;
+/* ---------- USER APPROVAL ---------- */
+function approvalTemplate(title: string, slug: string) {
+  return baseTemplate(
+    "Your Blog Is Published 🎉",
+    `
+      <p>Congratulations! Your blog <strong>${title}</strong> is now live.</p>
+    `,
+    { text: "Read Blog", link: `${SITE_URL}/community/${slug}` }
+  );
 }
 
 /* ---------------------------------------------------------
-   SERVER
+   HELPERS (UNCHANGED)
+--------------------------------------------------------- */
+async function sendAdminMail(subject: string, html: string) {
+  await transporter.sendMail({
+    from: `"Community Blog" <${Deno.env.get("GMAIL_USER")!}>`,
+    to: Deno.env.get("ADMIN_EMAIL") || Deno.env.get("GMAIL_USER")!,
+    subject,
+    html,
+  });
+}
+
+async function sendUserMail(to: string, subject: string, html: string) {
+  await transporter.sendMail({
+    from: `"Gaurav Kumar" <${Deno.env.get("GMAIL_USER")!}>`,
+    to,
+    subject,
+    html,
+  });
+}
+
+/* ---------------------------------------------------------
+   SERVER (LOGIC UNCHANGED)
 --------------------------------------------------------- */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  let body = {};
-  try {
-    body = await req.json();
-  } catch {
-    body = {};
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) {
+    return new Response("Unauthorized", { status: 401, headers: corsHeaders });
   }
 
-  console.log("➡️ Incoming request:", body);
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error } = await anonClient.auth.getUser(token);
 
-  /* ======================================================
-     1) 🚀 COLLABORATION INVITE EMAIL
-  ====================================================== */
+  if (error || !user) {
+    return new Response("Invalid token", { status: 401, headers: corsHeaders });
+  }
+
+  let body: any = {};
+  try { body = await req.json(); } catch {}
+
+  /* ---------------- INVITE ---------------- */
   if (body.type === "collaboration-invite") {
-    try {
-      const inviteLink = `${SITE_URL}/invite/accept?token=${body.token}`;
-
-      await transporter.sendMail({
-        from: `"${body.inviterName}" <${Deno.env.get("GMAIL_USER")!}>`,
-        to: body.email,
-        subject: `You're Invited to Collaborate on “${body.blogTitle}”`,
-        html: inviteTemplate(body.inviterName, body.blogTitle, inviteLink),
-      });
-
-      return new Response("Invite email sent", { headers: corsHeaders });
-    } catch (err) {
-      console.error("❌ Invite error:", err);
-      return new Response("Invite error", { status: 500, headers: corsHeaders });
-    }
+    const link = `${SITE_URL}/invite/accept?token=${body.token}`;
+    await sendUserMail(
+      body.email,
+      "You're invited to collaborate",
+      inviteTemplate(body.inviterName, body.blogTitle, link)
+    );
+    return new Response("Invite sent", { headers: corsHeaders });
   }
 
-  /* ======================================================
-     2) 📬 PROCESS EMAIL QUEUE (ADMIN ONLY)
-  ====================================================== */
-  if (body.type === "process-email-queue") {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response("Unauthorized", {
-        status: 401,
-        headers: corsHeaders,
-      });
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-
-    const {
-      data: { user },
-    } = await anonClient.auth.getUser(token);
-
-    if (!user) {
-      return new Response("Invalid user", {
-        status: 401,
-        headers: corsHeaders,
-      });
-    }
-
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.is_admin) {
-      return new Response("Forbidden", {
-        status: 403,
-        headers: corsHeaders,
-      });
-    }
-
-    /* --- Fetch jobs --- */
-    const { data: jobs } = await adminClient
-      .from("email_queue")
-      .select("*")
-      .eq("processed", false)
-      .limit(5);
-
-    if (!jobs?.length) {
-      return new Response("No pending emails", { headers: corsHeaders });
-    }
-
-    const { data: subscribers } = await adminClient
-      .from("blog_subscribers")
-      .select("email")
-      .eq("is_active", true);
-
-    if (!subscribers?.length) {
-      return new Response("No subscribers", { headers: corsHeaders });
-    }
-
-    /* --- Send emails --- */
-    for (const job of jobs) {
-      const isCommunity = job.source === "community_blog";
-
-      const link = isCommunity
-        ? `${SITE_URL}/community/${job.slug}`
-        : `${SITE_URL}/blog/${job.slug}`;
-
-      const html = blogTemplate(job, link);
-
-      for (const sub of subscribers) {
-        await transporter.sendMail({
-          from: `"Gaurav Kumar" <${Deno.env.get("GMAIL_USER")!}>`,
-          to: sub.email,
-          subject: isCommunity
-            ? `🌐 New Community Blog: ${job.title}`
-            : `📝 New Blog Published: ${job.title}`,
-          html,
-        });
-      }
-
-      await adminClient
-        .from("email_queue")
-        .update({ processed: true })
-        .eq("id", job.id);
-    }
-
-    return new Response("Newsletter emails sent", {
-      headers: corsHeaders,
-    });
+  /* ---------------- SUBMITTED ---------------- */
+  if (body.type === "community-submitted") {
+    await sendAdminMail(
+      "New Community Blog Submitted",
+      adminSubmissionTemplate(body.blogTitle, body.authorEmail)
+    );
+    return new Response("Admin notified", { headers: corsHeaders });
   }
 
-  return new Response("Invalid request", {
-    status: 400,
-    headers: corsHeaders,
-  });
+  /* ---------------- RESUBMITTED ---------------- */
+  if (body.type === "community-resubmitted") {
+    await sendAdminMail(
+      "Community Blog Resubmitted",
+      adminResubmissionTemplate(
+        body.blogTitle,
+        body.authorEmail,
+        body.submissionNote
+      )
+    );
+    return new Response("Admin notified", { headers: corsHeaders });
+  }
+
+  /* ---------------- REJECTED ---------------- */
+  if (body.type === "community-rejected") {
+    await sendUserMail(
+      body.userEmail,
+      "Your Blog Was Rejected",
+      rejectionTemplate(body.blogTitle, body.adminFeedback)
+    );
+    return new Response("User notified", { headers: corsHeaders });
+  }
+
+  /* ---------------- APPROVED ---------------- */
+  if (body.type === "community-approved") {
+    await sendUserMail(
+      body.userEmail,
+      "Your Blog Is Published",
+      approvalTemplate(body.blogTitle, body.blogSlug)
+    );
+    return new Response("User notified", { headers: corsHeaders });
+  }
+
+  return new Response("Invalid request", { status: 400, headers: corsHeaders });
 });

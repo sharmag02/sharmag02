@@ -189,63 +189,132 @@ export default function CommunityBlogEditor({
   };
 
   /* ---------------- SUBMIT HANDLER ---------------- */
-  const handleSubmit = async () => {
-    if (!title || !content) return;
+ const handleSubmit = async () => {
+  if (!title || !content) return;
 
-    if (isEditMode && !submissionNote.trim()) {
-      alert("Submission note is required when updating a blog.");
-      return;
+  if (isEditMode && !submissionNote.trim()) {
+    alert("Submission note is required when updating a blog.");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    /* ---------------------------------------------------
+       1️⃣ CREATE NEW BLOG
+    --------------------------------------------------- */
+    if (!isEditMode) {
+      const slug = await generateSlug(title);
+
+      const { error } = await supabase.from("community_blogs").insert({
+        title,
+        excerpt,
+        content,
+        slug,
+        author_id: user.id,
+        status: "submitted",
+        submission_note: submissionNote,
+      });
+
+      if (error) throw error;
+
+      // 🔥 Send email: FIRST SUBMIT
+      const { data: session } = await supabase.auth.getSession();
+
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          type: "community-submitted",
+          blogTitle: title,
+          authorEmail: user.email,
+        }),
+      });
+
+      alert("Blog submitted successfully");
+      return navigate("/community-blogs");
     }
 
-    try {
-      /** CREATE BLOG */
-      if (!isEditMode) {
-        const slug = await generateSlug(title);
-        await supabase.from("community_blogs").insert({
-          title,
-          excerpt,
-          content,
-          slug,
-          author_id: user.id,
-          status: "submitted",
-          submission_note: submissionNote,
-        });
+    /* ---------------------------------------------------
+       2️⃣ UPDATE EXISTING BLOG
+    --------------------------------------------------- */
+    let nextStatus = status;
 
-        alert("Blog submitted successfully");
-        return navigate("/blog", { replace: true });
-      }
-
-      /** UPDATE BLOG */
-      let nextStatus = status;
-
-      if (status === "approved" || status === "rejected") {
-        nextStatus = "resubmitted";
-      } else {
-        nextStatus = "submitted";
-      }
-
-      await supabase
-        .from("community_blogs")
-        .update({
-          title,
-          excerpt,
-          content,
-          status: nextStatus,
-          submission_note: submissionNote,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", realBlogId);
-
-      alert("Changes submitted successfully");
-
-      return navigate("/blog", { replace: true });
-    } catch (err) {
-      console.error("UPDATE ERROR:", err);
-      alert("Update failed");
-    } finally {
-      setLoading(false);
+    if (status === "approved" || status === "rejected") {
+      // 🔥 Approval/Rejection → Resubmitted
+      nextStatus = "resubmitted";
+    } 
+    else if (status === "submitted") {
+      // 🔥 Still submitted → NO EMAIL should be sent
+      nextStatus = "submitted";
     }
-  };
+
+    const { error: updateError } = await supabase
+      .from("community_blogs")
+      .update({
+        title,
+        excerpt,
+        content,
+        status: nextStatus,
+        submission_note: submissionNote,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", realBlogId);
+
+    if (updateError) throw updateError;
+
+    /* ---------------------------------------------------
+       3️⃣ EMAIL LOGIC BASED ON STATUS
+    --------------------------------------------------- */
+    const { data: session } = await supabase.auth.getSession();
+
+    // 🔥 RESUBMITTED → MAIL ADMIN
+    if (nextStatus === "resubmitted") {
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          type: "community-resubmitted",
+          blogTitle: title,
+          authorEmail: user.email,
+          submissionNote,
+        }),
+      });
+    }
+
+    // 🔥 FRESH SUBMISSION (edit of draft?) → MAIL ADMIN
+    if (nextStatus === "submitted" && status !== "submitted") {
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          type: "community-submitted",
+          blogTitle: title,
+          authorEmail: user.email,
+        }),
+      });
+    }
+
+    alert("Changes submitted successfully");
+    return navigate("/community-blogs");
+
+  } catch (err) {
+    console.error("UPDATE ERROR:", err);
+    alert("Update failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   /* ---------------- UI ---------------- */
  return (

@@ -82,6 +82,27 @@ export default function CommunityBlogReview({ blogId, onSave, onCancel }: Props)
         .eq("id", blogId);
 
       if (error) throw error;
+      /* ------------------------------
+   SEND APPROVAL EMAIL TO USER
+------------------------------ */
+const { data: session } = await supabase.auth.getSession();
+
+await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${session?.session?.access_token}`,
+  },
+  body: JSON.stringify({
+    type: "community-approved",
+    userEmail: blog.profiles.email,
+    blogTitle: blog.title,
+   blogUrl: `${import.meta.env.VITE_SITE_URL}/community/${blog.slug}`,
+ // ✅ send slug, not full URL
+  }),
+});
+
+
 
       /* ---------------------------------------------------
          EMAIL QUEUE + IMMEDIATE EDGE FUNCTION CALL
@@ -141,6 +162,26 @@ export default function CommunityBlogReview({ blogId, onSave, onCancel }: Props)
         .eq("id", blogId);
 
       if (error) throw error;
+      /* ------------------------------
+   SEND REJECTION EMAIL TO USER
+------------------------------ */
+const { data: session } = await supabase.auth.getSession();
+
+await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${session?.session?.access_token}`,
+  },
+  body: JSON.stringify({
+    type: "community-rejected",
+    userEmail: blog.profiles.email,
+    blogTitle: blog.title,
+    adminFeedback,
+  }),
+});
+
+
 
       alert("Blog rejected.");
       onSave();
