@@ -13,6 +13,7 @@ import {
   Award,
   BookOpen,
   Phone,
+  LayoutDashboard,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -55,7 +56,6 @@ export default function Sidebar() {
       {/* ================= PROFILE ================= */}
       <div className="px-6 pt-4 pb-3 border-b border-white/10">
         <div className="flex flex-col items-center text-center">
-          {/* Avatar (HARD LIMITED) */}
           <div className="relative">
             <img
               src="/pdf/photo.jpeg"
@@ -68,7 +68,6 @@ export default function Sidebar() {
                 object-cover
               "
             />
-            {/* <span className="absolute bottom-1 right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900" /> */}
           </div>
 
           <h2 className="mt-2 text-lg font-semibold leading-tight">
@@ -152,46 +151,56 @@ export default function Sidebar() {
       </div>
 
       {/* ================= AUTH ================= */}
-     <div className="px-4 py-2 border-t border-white/10">
+      {/* ================= AUTH ================= */}
+<div className="px-4 py-2 border-t border-white/10">
   {!user ? (
+    /* ---- NOT LOGGED IN ---- */
     <div className="flex gap-2">
-      {/* LOGIN */}
-     {/* LOGIN */}
-<button
-  onClick={() => navigate("/auth?mode=login")}
-  className="flex-1 py-2 text-sm rounded-lg
-             bg-blue-600 text-white
-             flex items-center justify-center gap-2
-             hover:bg-blue-700 transition"
->
-  <LogIn size={16} />
-  Login
-</button>
 
-{/* SIGNUP */}
-<button
-  onClick={() => navigate("/auth?mode=signup")}
-  className="flex-1 py-2 text-sm rounded-lg
-             bg-purple-600 text-white
-             flex items-center justify-center gap-2
-             hover:bg-purple-700 transition"
->
-  <UserPlus size={16} />
-  Signup
-</button>
+      <button
+        onClick={() => navigate("/auth?mode=login")}
+        className="flex-1 py-2 text-sm rounded-lg
+                   bg-blue-600 text-white
+                   flex items-center justify-center gap-2
+                   hover:bg-blue-700 transition"
+      >
+        <LogIn size={16} />
+        Login
+      </button>
+
+      <button
+        onClick={() => navigate("/auth?mode=signup")}
+        className="flex-1 py-2 text-sm rounded-lg
+                   bg-purple-600 text-white
+                   flex items-center justify-center gap-2
+                   hover:bg-purple-700 transition"
+      >
+        <UserPlus size={16} />
+        Signup
+      </button>
 
     </div>
   ) : (
+    /* ---- LOGGED IN ---- */
     <div className="space-y-2">
-      {/* Non-admin user name */}
-      {!profile?.is_admin && (
-        <div className="text-center text-xs text-slate-400 truncate">
-          {profile?.full_name || user.email}
-        </div>
-      )}
 
       <div className="flex gap-2">
-        {/* ADMIN */}
+
+        {/* ⭐ USER MODE (Show user name & user icon–Blue button) */}
+        {!profile?.is_admin && (
+          <button
+            onClick={() => navigate("/community/dashboard")}
+            className="flex-1 py-2 text-sm rounded-lg
+                       bg-blue-600 text-white
+                       flex items-center justify-center gap-2
+                       hover:bg-blue-700 transition"
+          >
+            <User size={16} />
+            {profile?.full_name || user.email}
+          </button>
+        )}
+
+        {/* ⭐ ADMIN MODE (Green Admin button) */}
         {profile?.is_admin && (
           <button
             onClick={() => navigate("/admin")}
@@ -205,7 +214,7 @@ export default function Sidebar() {
           </button>
         )}
 
-        {/* LOGOUT */}
+        {/* LOGOUT BUTTON (Always Red) */}
         <button
           onClick={signOut}
           className="flex-1 py-2 text-sm rounded-lg
@@ -217,6 +226,7 @@ export default function Sidebar() {
           Logout
         </button>
       </div>
+
     </div>
   )}
 </div>
@@ -224,7 +234,7 @@ export default function Sidebar() {
 
       {/* ================= FOOTER ================= */}
       <div className="text-center text-xs py-2 text-slate-400">
-        ©  Gaurav Kumar
+        © Gaurav Kumar
       </div>
     </aside>
   );

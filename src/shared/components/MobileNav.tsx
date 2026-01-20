@@ -143,46 +143,58 @@ export default function MobileNav() {
           </nav>
 
           {/* ================= AUTH ================= */}
-          <div className="px-4 py-2 border-t border-white/10">
+     {/* ================= AUTH ================= */}
+<div className="px-4 py-2 border-t border-white/10">
   {!user ? (
+    /* ---- NOT LOGGED IN ---- */
     <div className="flex gap-2">
-      {/* LOGIN */}
-      {/* LOGIN */}
-<button
-  onClick={() => navigate("/auth?mode=login")}
-  className="flex-1 py-2 text-sm rounded-lg
-             bg-blue-600 text-white
-             flex items-center justify-center gap-2
-             hover:bg-blue-700 transition"
->
-  <LogIn size={16} />
-  Login
-</button>
 
-{/* SIGNUP */}
-<button
-  onClick={() => navigate("/auth?mode=signup")}
-  className="flex-1 py-2 text-sm rounded-lg
-             bg-purple-600 text-white
-             flex items-center justify-center gap-2
-             hover:bg-purple-700 transition"
->
-  <UserPlus size={16} />
-  Signup
-</button>
+      {/* LOGIN */}
+      <button
+        onClick={() => navigate("/auth?mode=login")}
+        className="flex-1 py-2 text-sm rounded-lg
+                   bg-blue-600 text-white
+                   flex items-center justify-center gap-2
+                   hover:bg-blue-700 transition"
+      >
+        <LogIn size={16} />
+        Login
+      </button>
+
+      {/* SIGNUP */}
+      <button
+        onClick={() => navigate("/auth?mode=signup")}
+        className="flex-1 py-2 text-sm rounded-lg
+                   bg-purple-600 text-white
+                   flex items-center justify-center gap-2
+                   hover:bg-purple-700 transition"
+      >
+        <UserPlus size={16} />
+        Signup
+      </button>
 
     </div>
   ) : (
+    /* ---- LOGGED IN ---- */
     <div className="space-y-2">
-      {/* Non-admin user name */}
-      {!profile?.is_admin && (
-        <div className="text-center text-xs text-slate-400 truncate">
-          {profile?.full_name || user.email}
-        </div>
-      )}
 
       <div className="flex gap-2">
-        {/* ADMIN */}
+
+        {/* ⭐ USER BUTTON (BLUE) */}
+        {!profile?.is_admin && (
+          <button
+            onClick={() => navigate("/community/dashboard")}
+            className="flex-1 py-2 text-sm rounded-lg
+                       bg-blue-600 text-white
+                       flex items-center justify-center gap-2
+                       hover:bg-blue-700 transition"
+          >
+            <User size={16} />
+            {profile?.full_name || user.email}
+          </button>
+        )}
+
+        {/* ⭐ ADMIN BUTTON (GREEN) */}
         {profile?.is_admin && (
           <button
             onClick={() => navigate("/admin")}
@@ -196,7 +208,7 @@ export default function MobileNav() {
           </button>
         )}
 
-        {/* LOGOUT */}
+        {/* LOGOUT BUTTON (RED) */}
         <button
           onClick={signOut}
           className="flex-1 py-2 text-sm rounded-lg
@@ -207,10 +219,13 @@ export default function MobileNav() {
           <LogOut size={16} />
           Logout
         </button>
+
       </div>
+
     </div>
   )}
 </div>
+
 
 
           {/* ================= SOCIAL + THEME (BOTTOM) ================= */}
