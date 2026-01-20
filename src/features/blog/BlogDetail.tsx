@@ -57,6 +57,8 @@ export default function BlogDetail() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [hasLiked, setHasLiked] = useState(false);
+
 
   /* ========= ToC State ========= */
   const contentRef = useRef<HTMLDivElement>(null);
@@ -185,22 +187,51 @@ useEffect(() => {
     if (blog) loadComments(blog.id);
   }, [blog]);
 
+  useEffect(() => {
+  if (!blog || !user) return;
+
+  const key = `blog_like_${blog.id}_${user.id}`;
+
+  if (localStorage.getItem(key)) {
+    setHasLiked(true);
+  } else {
+    setHasLiked(false);
+  }
+}, [blog, user]);
+
   /* ---------------- LIKE ---------------- */
 
-  const handleLike = async () => {
-    if (!blog || !user) return alert("Login to like the post");
+ const handleLike = async () => {
+  if (!blog || !user) return alert("Please login to like this post");
 
-    const liked = sessionStorage.getItem(`liked_${blog.id}`);
-    if (liked) return;
+  const key = `blog_like_${blog.id}_${user.id}`;
 
-    await supabase
-      .from("blogs")
-      .update({ likes: likes + 1 })
-      .eq("id", blog.id);
+  // User already liked
+  if (localStorage.getItem(key)) {
+    alert("Thanks! You already liked this post ❤️");
+    return;
+  }
 
-    sessionStorage.setItem(`liked_${blog.id}`, "true");
-    setLikes((l) => l + 1);
-  };
+  // Update DB
+  const { error } = await supabase
+    .from("blogs")
+    .update({ likes: likes + 1 })
+    .eq("id", blog.id);
+
+  if (error) {
+    console.error("Like error:", error);
+    alert("Failed to like the post.");
+    return;
+  }
+
+  // Store like locally to prevent future likes
+  localStorage.setItem(key, "true");
+  setLikes((prev) => prev + 1);
+  setHasLiked(true);
+
+  alert("Thank you for liking this post ❤️");
+};
+
 
   /* ---------------- ADD COMMENT ---------------- */
 

@@ -55,7 +55,7 @@ function premiumTemplate({ heading, message, action }) {
           action
             ? `<div style="margin-top:28px">
                 <a href="${action.link}" style="display:inline-block;
-                  background:#111827;color:#fff;padding:12px 22px;border-radius:10px;
+                  background:#111827;color:#fff;padding:14px 26px;border-radius:12px;
                   text-decoration:none;font-weight:600">${action.text}</a>
               </div>`
             : ""
@@ -63,25 +63,34 @@ function premiumTemplate({ heading, message, action }) {
       </div>
 
       <!-- Footer -->
-      <div style="padding:24px 32px;border-top:1px solid #e5e7eb;text-align:center">
+      <div style="padding:26px 32px;border-top:1px solid #e5e7eb;text-align:center">
 
         <!-- ICON ROW -->
-        <div style="margin-bottom:14px">
-          <a href="https://sharmag02.netlify.app" style="margin:0 8px;text-decoration:none">
-            🌐
+        <div style="margin-bottom:16px">
+
+          <a href="https://sharmag02.netlify.app" style="margin:0 10px">
+            <img src="https://img.icons8.com/ios-filled/50/000000/domain.png"
+              width="28" height="28" alt="Website" />
           </a>
-          <a href="https://linkedin.com/in/sharmag02" style="margin:0 8px;text-decoration:none">
-            🔗
+
+          <a href="https://linkedin.com/in/sharmag02" style="margin:0 10px">
+            <img src="https://img.icons8.com/ios-filled/50/0A66C2/linkedin.png"
+              width="28" height="28" alt="LinkedIn" />
           </a>
-          <a href="https://github.com/sharmag02" style="margin:0 8px;text-decoration:none">
-            🐙
+
+          <a href="https://github.com/sharmag02" style="margin:0 10px">
+            <img src="https://img.icons8.com/ios-glyphs/50/000000/github.png"
+              width="28" height="28" alt="GitHub" />
           </a>
-          <a href="mailto:contact.sharmag02@gmail.com" style="margin:0 8px;text-decoration:none">
-            ✉️
+
+          <a href="mailto:contact.sharmag02@gmail.com" style="margin:0 10px">
+            <img src="https://img.icons8.com/ios-filled/50/EA4335/gmail.png"
+              width="28" height="28" alt="Gmail" />
           </a>
+
         </div>
 
-        <!-- COPYRIGHT ROW -->
+        <!-- COPYRIGHT -->
         <div style="font-size:13px;color:#6b7280">
           © ${new Date().getFullYear()} Gaurav Kumar
         </div>
@@ -90,6 +99,7 @@ function premiumTemplate({ heading, message, action }) {
     </div>
   </div>`;
 }
+
 
 
 /* ---------------- SEND EMAIL ---------------- */

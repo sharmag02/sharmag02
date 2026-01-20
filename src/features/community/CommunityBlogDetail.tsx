@@ -69,6 +69,7 @@ export default function BlogDetail() {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
+const [hasLiked, setHasLiked] = useState(false);
 
   // ⭐ Coauthors
   const [coauthors, setCoauthors] = useState<any[]>([]);
@@ -129,6 +130,19 @@ useEffect(() => {
 }, [slug, navigate]);
 
 
+/* ---------------- CHECK IF USER ALREADY LIKED ---------------- */
+useEffect(() => {
+  if (!blog || !user) return;
+
+  const key = `community_like_${blog.id}_${user.id}`;
+
+  if (localStorage.getItem(key)) {
+    setHasLiked(true);
+  } else {
+    setHasLiked(false);
+  }
+}, [blog, user]);
+
   /* ---------------- LOAD COMMENTS ---------------- */
 
   const loadComments = async (blogId: string) => {
@@ -147,12 +161,18 @@ useEffect(() => {
 
   /* ---------------- LIKE ---------------- */
 
- const handleLike = async () => {
-  if (!blog || !user) return alert("Login to like this post");
+const handleLike = async () => {
+  if (!user || !blog) {
+    alert("Please login to like this post");
+    return;
+  }
 
-  const key = `community_like_${blog.id}`;
+  const key = `community_like_${blog.id}_${user.id}`;
 
-  if (sessionStorage.getItem(key)) return;
+  if (localStorage.getItem(key)) {
+    alert("Thanks! You already liked this post ❤️");
+    return;
+  }
 
   const { error } = await supabase
     .from("community_blogs")
@@ -161,13 +181,16 @@ useEffect(() => {
 
   if (error) {
     console.error("Like error:", error);
-    alert("Failed to like post");
+    alert("Failed to like the post.");
     return;
   }
 
-  sessionStorage.setItem(key, "true");
+  localStorage.setItem(key, "true");
   setLikes((prev) => prev + 1);
+
+  alert("Thank you for liking this post ❤️");
 };
+
 
 
 
