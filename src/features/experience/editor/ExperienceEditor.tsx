@@ -212,13 +212,31 @@ export default function ExperienceEditor({
           />
 
           {/* ACHIEVEMENTS */}
-          <input
-            className={`w-full rounded-xl px-4 py-4 outline-none ${inputBase}`}
-            placeholder="Press Enter to add achievement"
-            value={achievementInput}
-            onChange={(e) => setAchievementInput(e.target.value)}
-            onKeyDown={handleAchievementEnter}
-          />
+          <div className="flex gap-3">
+  <input
+    className={`flex-1 rounded-xl px-4 py-4 outline-none ${inputBase}`}
+    placeholder="Add achievement"
+    value={achievementInput}
+    onChange={(e) => setAchievementInput(e.target.value)}
+    onKeyDown={handleAchievementEnter}   // Desktop support
+  />
+
+  <button
+    onClick={() => {
+      if (achievementInput.trim()) {
+        setForm({
+          ...form,
+          achievements: [...form.achievements, achievementInput.trim()],
+        });
+        setAchievementInput("");
+      }
+    }}
+    className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-95"
+  >
+    +
+  </button>
+</div>
+
 
           <div className="flex flex-wrap gap-2">
             {form.achievements.map((a, i) => (

@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   ChevronDown,
+   CornerDownLeft,
 } from "lucide-react";
 import { supabase } from "../../shared/lib/supabase";
 
@@ -417,7 +418,7 @@ export default function AdminPanel() {
             {items.map((item) => (
               <div
                 key={item.id}
-                className={`rounded-xl p-6 flex flex-col md:flex-row transition-all ${
+                 className={`rounded-xl p-6 flex flex-row justify-between items-start transition-all ${
 
                   theme === "light"
                     ? "bg-white border border-gray-300 shadow-md hover:shadow-xl hover:border-gray-400 hover:scale-[1.01]"
@@ -530,42 +531,37 @@ export default function AdminPanel() {
                       )}
 
                       {item.submission_note && (
-                        <div className="mt-3">
-                          <button
-                            onClick={() =>
-                              setOpenNoteId(
-                                openNoteId === item.id ? null : item.id
-                              )
-                            }
-                            className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
-                          >
-                            {openNoteId === item.id ? (
-                              <EyeOff size={16} />
-                            ) : (
-                              <Eye size={16} />
-                            )}
-                            View Submission Note
-                          </button>
+                        <div className="mt-3 space-y-3">
+  <button
+    onClick={() => setOpenNoteId(openNoteId === item.id ? null : item.id)}
+    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 mb-2"
+  >
+    {openNoteId === item.id ? <EyeOff size={16} /> : <Eye size={16} />}
+    View Submission Note
+  </button>
 
-                          {openNoteId === item.id && (
-                            <div
-                              className={`mt-2 p-3 rounded-lg whitespace-pre-wrap border text-sm ${
-                                theme === "light"
-                                  ? "bg-gray-100 border-gray-300 text-gray-800"
-                                  : "bg-slate-900/60 border-slate-700 text-slate-200"
-                              }`}
-                            >
-                              {item.submission_note}
-                            </div>
-                          )}
-                        </div>
+  {openNoteId === item.id && (
+    <div
+      className={`p-3 rounded-lg whitespace-pre-wrap border text-sm ${
+        theme === "light"
+          ? "bg-gray-100 border-gray-300 text-gray-800"
+          : "bg-slate-900/60 border-slate-700 text-slate-200"
+      }`}
+    >
+      {item.submission_note}
+    </div>
+  )}
+</div>
+
                       )}
                     </>
                   )}
                 </div>
 
                 {/* ACTION BUTTONS */}
-                <div className="flex items-start gap-3 ml-3">
+                <div className="flex items-center gap-4 ml-4">
+
+
                   {activeType === "contact_messages" ? (
                     <>
                       <button
@@ -579,16 +575,17 @@ export default function AdminPanel() {
                         {openNoteId === item.id ? <EyeOff /> : <Eye />}
                       </button>
 
-                      <button
-                        onClick={() => {
-                          setReplyTarget(item);
-                          setReplyText(item.admin_reply || "");
-                          setReplyModalOpen(true);
-                        }}
-                        className="text-green-600 hover:text-green-700 font-semibold"
-                      >
-                        Reply
-                      </button>
+                     <button
+  onClick={() => {
+    setReplyTarget(item);
+    setReplyText(item.admin_reply || "");
+    setReplyModalOpen(true);
+  }}
+  className="text-green-600 hover:text-green-700"
+>
+  <CornerDownLeft size={20} />
+</button>
+
 
                       <button
                         onClick={() => handleDelete(item.id)}

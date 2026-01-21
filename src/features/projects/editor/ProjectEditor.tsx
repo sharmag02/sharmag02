@@ -166,13 +166,28 @@ export default function ProjectEditor({
           </select>
 
           {/* TAG INPUT */}
-          <input
-            className={`w-full rounded-lg px-4 py-3 border ${inputClass}`}
-            placeholder="Press Enter to add tag"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleTagEnter}
-          />
+         <div className="flex gap-3">
+  <input
+    className={`flex-1 rounded-lg px-4 py-3 border ${inputClass}`}
+    placeholder="Add a tag"
+    value={tagInput}
+    onChange={(e) => setTagInput(e.target.value)}
+    onKeyDown={handleTagEnter}    // Desktop Enter works
+  />
+
+  <button
+    onClick={() => {
+      if (tagInput.trim()) {
+        setForm({ ...form, tags: [...form.tags, tagInput.trim()] });
+        setTagInput("");
+      }
+    }}
+    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-95"
+  >
+    +
+  </button>
+</div>
+
 
           <div className="flex flex-wrap gap-2">
             {form.tags.map((t, i) => (
