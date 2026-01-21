@@ -268,7 +268,7 @@ export default function CommunityBlogReview({ blogId, onSave, onCancel }: Props)
           disabled={processing}
           className="px-5 py-3 rounded-xl bg-red-600 text-white font-semibold disabled:opacity-50"
         >
-          {processing ? "Processing…" : "Reject"}
+          {processing ? "Rejecting…" : "Reject"}
         </button>
 
         <button

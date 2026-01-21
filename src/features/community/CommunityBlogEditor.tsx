@@ -6,14 +6,28 @@ import { supabase } from "../../shared/lib/supabase";
 import { useAuth } from "../../shared/context/AuthContext";
 import { useTheme } from "../../shared/context/ThemeContext";
 import slugify from "../../shared/utils/slugify";
-import { extractImagePaths } from "../../../shared/utils/extractImagePaths";
 import { uploadToSupabase } from "../../shared/lib/SupabaseUploadAdapter";
 
-/* ---------------- INVITE MODAL ---------------- */
+/* ====================================================================== */
+/* --------------------------- INVITE MODAL ------------------------------ */
+/* ====================================================================== */
 function InviteModal({ open, onClose, onInvite }) {
   const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
 
   if (!open) return null;
+
+  const handleSend = async () => {
+    if (!email) return;
+
+    setSending(true);
+
+    try {
+      await onInvite(email);
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div
@@ -40,15 +54,22 @@ function InviteModal({ open, onClose, onInvite }) {
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg bg-gray-300 dark:bg-slate-600"
+            disabled={sending}
           >
             Cancel
           </button>
 
           <button
-            onClick={() => onInvite(email)}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white"
+            onClick={handleSend}
+            disabled={sending}
+            className={`px-4 py-2 rounded-lg text-white flex items-center gap-2 transition 
+              ${sending ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
           >
-            Send Invite
+            {sending && (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            )}
+
+            {sending ? "Sending..." : "Send Invite"}
           </button>
         </div>
       </div>
@@ -56,7 +77,60 @@ function InviteModal({ open, onClose, onInvite }) {
   );
 }
 
-/* ---------------- COMMUNITY BLOG EDITOR ---------------- */
+
+/* ====================================================================== */
+/* ---------------------- SUBMISSION NOTE MODAL -------------------------- */
+/* ====================================================================== */
+function SubmissionNoteModal({ open, onClose, onSubmit, note, setNote }) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="w-[420px] bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+          Submit Changes
+        </h2>
+
+        <p className="text-gray-700 dark:text-gray-300 text-sm mb-3">
+          Please explain the changes you made.
+        </p>
+
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="w-full h-32 p-3 border rounded-lg bg-transparent dark:bg-slate-700 dark:text-white border-gray-300 dark:border-slate-600"
+          placeholder="Describe what was updated..."
+        />
+
+        <div className="flex justify-end gap-3 mt-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-gray-300 dark:bg-slate-600"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={onSubmit}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white"
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ====================================================================== */
+/* ----------------------- COMMUNITY BLOG EDITOR ------------------------- */
+/* ====================================================================== */
 export default function CommunityBlogEditor({
   blogId,
   onSave,
@@ -82,6 +156,7 @@ export default function CommunityBlogEditor({
 
   const [submissionNote, setSubmissionNote] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
 
   const [isCollaborator, setIsCollaborator] = useState(false);
   const [inviteAccepted, setInviteAccepted] = useState(true);
@@ -105,6 +180,7 @@ export default function CommunityBlogEditor({
         setContent(data.content);
         setStatus(data.status);
         setAuthorId(data.author_id);
+        setSubmissionNote(data.submission_note || "");
       }
 
       const { data: invite } = await supabase
@@ -143,7 +219,7 @@ export default function CommunityBlogEditor({
     return slug;
   };
 
-  /* ---------------- SEND INVITE (JWT FIXED) ---------------- */
+  /* ---------------- SEND INVITE ---------------- */
   const sendInvite = async (email) => {
     if (!email || !user?.id || !realBlogId) return;
 
@@ -167,39 +243,41 @@ export default function CommunityBlogEditor({
     });
 
     if (error) {
-      console.log("INVITE INSERT ERROR:", error);
-      alert("Failed to create invitation");
+      console.log("INVITE ERROR:", error);
+      alert("Failed to invite");
       return;
     }
 
-    /* ---------------- JWT ADDED HERE ONLY ---------------- */
     const { data: session } = await supabase.auth.getSession();
 
-    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.session?.access_token}`,
-      },
-      body: JSON.stringify({
-        type: "collaboration-invite",
-        email,
-        token,
-        blogTitle: title,
-        inviterName: user.email,
-      }),
-    });
+    await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          type: "collaboration-invite",
+          email,
+          token,
+          blogTitle: title,
+          inviterName: user.email,
+        }),
+      }
+    );
 
-    alert("Invitation email sent");
+    alert("Invitation sent");
     setShowInviteModal(false);
   };
 
   /* ---------------- SUBMIT HANDLER ---------------- */
-  const handleSubmit = async () => {
+  const finalSubmit = async () => {
     if (!title || !content) return;
 
     if (isEditMode && !submissionNote.trim()) {
-      alert("Submission note is required when updating a blog.");
+      alert("Submission note is required.");
       return;
     }
 
@@ -224,20 +302,23 @@ export default function CommunityBlogEditor({
 
         const { data: session } = await supabase.auth.getSession();
 
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.session?.access_token}`,
-          },
-          body: JSON.stringify({
-            type: "community-submitted",
-            blogTitle: title,
-            authorEmail: user.email,
-          }),
-        });
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.session?.access_token}`,
+            },
+            body: JSON.stringify({
+              type: "community-submitted",
+              blogTitle: title,
+              authorEmail: user.email,
+            }),
+          }
+        );
 
-        alert("Blog submitted successfully");
+        alert("Blog submitted");
         return navigate("/community-blogs");
       }
 
@@ -246,8 +327,6 @@ export default function CommunityBlogEditor({
 
       if (status === "approved" || status === "rejected") {
         nextStatus = "resubmitted";
-      } else if (status === "submitted") {
-        nextStatus = "submitted";
       }
 
       const { error: updateError } = await supabase
@@ -264,54 +343,36 @@ export default function CommunityBlogEditor({
 
       if (updateError) throw updateError;
 
-      const { data: session } = await supabase.auth.getSession();
-
-      /* ---------- EMAILS ---------- */
-      if (nextStatus === "resubmitted") {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.session?.access_token}`,
-          },
-          body: JSON.stringify({
-            type: "community-resubmitted",
-            blogTitle: title,
-            authorEmail: user.email,
-            submissionNote,
-          }),
-        });
-      }
-
-      if (nextStatus === "submitted" && status !== "submitted") {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.session?.access_token}`,
-          },
-          body: JSON.stringify({
-            type: "community-submitted",
-            blogTitle: title,
-            authorEmail: user.email,
-          }),
-        });
-      }
-
-      alert("Changes submitted successfully");
+      alert("Changes submitted");
       return navigate("/community-blogs");
     } catch (err) {
-      console.error("UPDATE ERROR:", err);
+      console.error(err);
       alert("Update failed");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ---------------- OPEN modal instead of submit ---------------- */
+  const openNoteModal = () => {
+    setShowNoteModal(true);
+  };
+
   /* ---------------- UI ---------------- */
   return (
-    <div className="max-w-5xl mx-auto  rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-gray-300 dark:border-slate-700 flex flex-col max-h-[85vh] mt-8 ">
+    <div
+    className="
+      min-h-screen 
+      bg-white 
+      dark:bg-gradient-to-br 
+      dark:from-[#0B1220] 
+      dark:to-[#050A18]
+      py-10
+    "
+  >
+    <div className="max-w-5xl mx-auto rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-gray-300 dark:border-slate-700 flex flex-col max-h-[90vh]">
 
+      {/* Collaboration Banner */}
       {isCollaborator && !inviteAccepted && (
         <div className="px-8 py-4 bg-yellow-100 border-b text-center dark:bg-yellow-200/20 dark:border-slate-700">
           <p className="font-medium mb-2 text-gray-900 dark:text-white">
@@ -345,7 +406,8 @@ export default function CommunityBlogEditor({
         </div>
       )}
 
-      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-300 dark:border-slate-700 ">
+      {/* Header */}
+      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-300 dark:border-slate-700">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           {isEditMode ? "Edit Community Blog" : "Create Community Blog"}
         </h2>
@@ -366,6 +428,7 @@ export default function CommunityBlogEditor({
         </div>
       </div>
 
+      {/* Editor */}
       <div className="p-8 space-y-6 flex-1 overflow-y-auto">
         <input
           className="w-full text-2xl font-bold bg-transparent outline-none border-b border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
@@ -381,7 +444,7 @@ export default function CommunityBlogEditor({
           onChange={(e) => setExcerpt(e.target.value)}
         />
 
-        <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700  jodit-theme ">
+        <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700 jodit-theme">
           <JoditEditor
             ref={editorRef}
             value={content}
@@ -437,20 +500,13 @@ export default function CommunityBlogEditor({
                     const input = document.createElement("input");
                     input.type = "file";
                     input.accept = "image/*";
-
                     input.onchange = async () => {
                       const file = input.files?.[0];
                       if (!file) return;
 
-                      try {
-                        const url = await uploadToSupabase(file);
-                        editor.selection.insertImage(url);
-                      } catch (err) {
-                        console.error(err);
-                        alert("Image upload failed");
-                      }
+                      const url = await uploadToSupabase(file);
+                      editor.selection.insertImage(url);
                     };
-
                     input.click();
                   },
                 },
@@ -459,20 +515,12 @@ export default function CommunityBlogEditor({
             onBlur={(v) => setContent(v)}
           />
         </div>
-
-        {(isAuthor || isCollaborator) && isEditMode && (
-          <textarea
-            className="w-full p-3 border rounded-lg bg-transparent dark:bg-slate-800 dark:text-white border-gray-300 dark:border-slate-700"
-            value={submissionNote}
-            onChange={(e) => setSubmissionNote(e.target.value)}
-            placeholder="Explain the changes made…"
-          />
-        )}
       </div>
 
+      {/* Footer */}
       <div className="px-8 py-5 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-300 dark:border-slate-700 flex justify-end gap-3">
         <button
-          onClick={handleSubmit}
+          onClick={openNoteModal}
           disabled={loading}
           className="px-5 py-3 flex items-center gap-2 rounded-xl bg-gray-500 hover:bg-gray-600 text-white font-medium transition disabled:opacity-50"
         >
@@ -481,11 +529,21 @@ export default function CommunityBlogEditor({
         </button>
       </div>
 
+      {/* Modals */}
       <InviteModal
         open={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onInvite={sendInvite}
       />
+
+      <SubmissionNoteModal
+        open={showNoteModal}
+        onClose={() => setShowNoteModal(false)}
+        onSubmit={finalSubmit}
+        note={submissionNote}
+        setNote={setSubmissionNote}
+      />
+    </div>
     </div>
   );
 }

@@ -248,7 +248,79 @@ serve(async (req) => {
       }
 
       return jsonResponse({ success: true });
-    }
+    } 
+    /* ---------------- CONTACT MESSAGE ---------------- */
+// --- CONTACT MESSAGE (USER SUBMISSION) ---
+if (body.type === "contact-message") {
+  // 1️⃣ Save message inside Supabase table
+  await adminClient.from("contact_messages").insert({
+    name: body.name,
+    email: body.email,
+    telegram: body.telegram,
+    subject: body.subject,
+    message: body.message,
+    created_at: new Date().toISOString()
+  });
+
+  // 2️⃣ Send email TO ADMIN (notify new message)
+  await sendMail(
+    Deno.env.get("ADMIN_EMAIL")!,
+    "📩 New Contact Form Message",
+    premiumTemplate({
+      heading: "New contact form message",
+      message: `
+        <p><b>Name:</b> ${body.name}</p>
+        <p><b>Email:</b> ${body.email}</p>
+        <p><b>Telegram:</b> ${body.telegram}</p>
+        <p><b>Subject:</b> ${body.subject}</p>
+        <p><b>Message:</b></p>
+        <blockquote>${body.message}</blockquote>
+      `
+    })
+  );
+
+  return jsonResponse({ success: true });
+}
+
+
+
+// --- CONTACT REPLY (ADMIN REPLY TO USER) ---
+if (body.type === "contact-reply") {
+  const { id, email, replyMessage } = body;
+
+  if (!id || !email || !replyMessage) {
+    return jsonResponse(
+      { error: "Missing id, email, or reply message" },
+      400
+    );
+  }
+
+  // 1️⃣ Send reply email to user
+  await sendMail(
+    email,
+    "Reply from Gaurav Kumar",
+    premiumTemplate({
+      heading: "Response to your message",
+      message: `
+        <p>${replyMessage}</p>
+        <br/>
+        <p>Regards,<br/><b>Gaurav Kumar</b></p>
+      `
+    })
+  );
+
+  // 2️⃣ Save reply inside DB
+  await adminClient
+    .from("contact_messages")
+    .update({
+      admin_reply: replyMessage,
+      reply_sent: true,
+      reply_at: new Date().toISOString()
+    })
+    .eq("id", id);
+
+  return jsonResponse({ success: true, message: "Reply sent successfully" });
+}
 
     return jsonResponse({ error: "Invalid request" }, 400);
   } catch (err) {

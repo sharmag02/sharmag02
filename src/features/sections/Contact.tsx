@@ -1,9 +1,52 @@
 import { Github, Linkedin, Mail, MapPin, Phone, Send, Twitter } from 'lucide-react';
-import { useForm, ValidationError } from "@formspree/react";
+import { useState } from "react";
 import { NextPageArrow } from "../../shared/components/NextPageArrow";
 
-export  function Contact() {
-  const [state, handleSubmit] = useForm("xkgdvgnn"); // 🔥 Your Formspree ID here
+export function Contact() {
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const formData = new FormData(e.target);
+
+    const payload = {
+      type: "contact-message",
+      name: formData.get("name"),
+      telegram: formData.get("telegram"),
+      email: formData.get("email"),
+      subject: formData.get("subject"),
+      message: formData.get("message"),
+    };
+
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    if (res.ok) {
+      setSubmitted(true);
+      e.target.reset(); // Clear form
+
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => {
+        setSubmitted(false);
+      }, 3000);
+    } else {
+      alert("Failed to send message. Try again.");
+    }
+
+    setSubmitting(false);
+  };
 
   return (
     <section id="contact" className="relative min-h-screen py-6 px-6 bg-white dark:bg-gray-900">
@@ -20,7 +63,7 @@ export  function Contact() {
 
         <div className="grid md:grid-cols-2 gap-12">
 
-          {/* LEFT SIDE - CONTACT INFO */}
+          {/* LEFT SIDE */}
           <div className="space-y-8">
             <div>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Contact Information</h3>
@@ -67,7 +110,7 @@ export  function Contact() {
               </div>
             </div>
 
-            {/* Social Links */}
+            {/* Social */}
             <div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Connect With Me</h3>
               <div className="flex gap-4">
@@ -75,7 +118,7 @@ export  function Contact() {
                   href="https://github.com/.sharmag02"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-4 bg-slate-50 dark:bg-white-800 rounded-lg hover:bg-blue-600 hover:text-white dark:hover:text-white transition-all hover:scale-110"
+                  className="p-4 bg-slate-50 dark:bg-white-800 rounded-lg hover:bg-blue-600 hover:text-white transition-all hover:scale-110"
                 >
                   <Github size={24} />
                 </a>
@@ -83,7 +126,7 @@ export  function Contact() {
                   href="https://linkedin.com/in/sharmag02"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-4 bg-slate-50 dark:bg-white-800 rounded-lg hover:bg-blue-600 hover:text-white dark:hover:text-white transition-all hover:scale-110"
+                  className="p-4 bg-slate-50 dark:bg-white-800 rounded-lg hover:bg-blue-600 hover:text-white transition-all hover:scale-110"
                 >
                   <Linkedin size={24} />
                 </a>
@@ -91,7 +134,7 @@ export  function Contact() {
                   href="https://twitter.com/sharmag02off"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-4 bg-slate-50 dark:bg-white-800 rounded-lg hover:bg-blue-600 hover:text-white dark:hover:text-white transition-all hover:scale-110"
+                  className="p-4 bg-slate-50 dark:bg-white-800 rounded-lg hover:bg-blue-600 hover:text-white transition-all hover:scale-110"
                 >
                   <Twitter size={24} />
                 </a>
@@ -99,9 +142,9 @@ export  function Contact() {
             </div>
           </div>
 
-          {/* RIGHT SIDE - FORMSPREE FORM */}
+          {/* RIGHT SIDE - FORM */}
           <div>
-            {state.succeeded ? (
+            {submitted ? (
               <div className="bg-green-50 dark:bg-green-900 p-10 rounded-2xl shadow-lg text-center">
                 <h3 className="text-2xl font-bold text-green-700 dark:text-green-300 mb-3">Message Sent Successfully! 🎉</h3>
                 <p className="text-gray-700 dark:text-gray-200">
@@ -120,11 +163,13 @@ export  function Contact() {
                     type="text"
                     name="name"
                     required
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors"
                     placeholder="Your Name"
                   />
                 </div>
-                 <div className="mb-6">
+
+                {/* Telegram */}
+                <div className="mb-6">
                   <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                     Your Telegram Id
                   </label>
@@ -132,7 +177,7 @@ export  function Contact() {
                     type="text"
                     name="telegram"
                     required
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors"
                     placeholder="@telegramid"
                   />
                 </div>
@@ -146,10 +191,9 @@ export  function Contact() {
                     type="email"
                     name="email"
                     required
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors"
                     placeholder="Please fill the correct email so that I can reply back."
                   />
-                  <ValidationError prefix="Email" field="email" errors={state.errors} />
                 </div>
 
                 {/* Subject */}
@@ -161,7 +205,7 @@ export  function Contact() {
                     type="text"
                     name="subject"
                     required
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors"
                     placeholder="Project Inquiry"
                   />
                 </div>
@@ -175,33 +219,32 @@ export  function Contact() {
                     name="message"
                     rows={3}
                     required
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors resize-none"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:border-blue-500 transition-colors resize-none"
                     placeholder="Tell me about your project..."
                   ></textarea>
-                  <ValidationError prefix="Message" field="message" errors={state.errors} />
                 </div>
 
                 {/* Submit */}
                 <button
                   type="submit"
-                  disabled={state.submitting}
+                  disabled={submitting}
                   className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-blue-500/50 transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {state.submitting ? "Sending..." : (
+                  {submitting ? "Sending..." : (
                     <>
                       Send Message
                       <Send size={20} />
                     </>
                   )}
                 </button>
+
               </form>
             )}
           </div>
 
         </div>
       </div>
-      
-      {/* ✅ AUTO-DETECTED NEXT PAGE ARROW */}
+
       <NextPageArrow />
     </section>
   );

@@ -147,7 +147,7 @@ useEffect(() => {
 
   const loadComments = async (blogId: string) => {
     const { data } = await supabase
-      .from("comments")
+      .from("community_comments")
       .select("*, profiles(full_name,email,is_admin)")
       .eq("blog_id", blogId)
       .order("created_at", { ascending: false });
@@ -199,7 +199,7 @@ const handleLike = async () => {
   const handleComment = async () => {
     if (!user || !newComment.trim() || !blog) return;
 
-    await supabase.from("comments").insert({
+    await supabase.from("community_comments").insert({
       blog_id: blog.id,
       user_id: user.id,
       content: newComment.trim(),
@@ -212,7 +212,7 @@ const handleLike = async () => {
   const saveEdit = async () => {
     if (!editId || !editText.trim()) return;
 
-    await supabase.from("comments").update({ content: editText }).eq("id", editId);
+    await supabase.from("community_comments").update({ content: editText }).eq("id", editId);
 
     setEditId(null);
     setEditText("");
@@ -222,7 +222,7 @@ const handleLike = async () => {
   const confirmDelete = async () => {
     if (!deleteId) return;
 
-    await supabase.from("comments").delete().eq("id", deleteId);
+    await supabase.from("community_comments").delete().eq("id", deleteId);
     setDeleteId(null);
     loadComments(blog!.id);
   };
@@ -305,14 +305,21 @@ const handleLike = async () => {
 };
 
  return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
+     <div className="min-h-screen 
+      bg-white 
+      dark:bg-gradient-to-br 
+      dark:from-[#0B1220] 
+      dark:to-[#050A18]
+      px-4 
+      py-12 ">
+        <div className="max-w-5xl mx-auto">
       {/* Back */}
       <button
   onClick={() => navigate(-1)}
   className="
     flex items-center gap-2 mb-8
     text-slate-700 hover:text-blue-500
-    dark:text-slate-600 dark:hover:text-blue-400
+    dark:text-slate-200 dark:hover:text-blue-400
     font-medium
   "
 >
@@ -535,6 +542,7 @@ const handleLike = async () => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

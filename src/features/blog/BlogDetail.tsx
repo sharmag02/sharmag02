@@ -315,14 +315,21 @@ const coauthorNames = coauthors
 };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
+    <div className="min-h-screen 
+      bg-white 
+      dark:bg-gradient-to-br 
+      dark:from-[#0B1220] 
+      dark:to-[#050A18]
+      px-4 
+      py-12 ">
+        <div className="max-w-5xl mx-auto">
       {/* Back */}
       <button
   onClick={() => navigate(-1)}
   className="
     flex items-center gap-2 mb-8
     text-slate-700 hover:text-blue-500
-    dark:text-slate-600 dark:hover:text-blue-400
+    dark:text-slate-200 dark:hover:text-blue-400
     font-medium
   "
 >
@@ -557,6 +564,7 @@ const coauthorNames = coauthors
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

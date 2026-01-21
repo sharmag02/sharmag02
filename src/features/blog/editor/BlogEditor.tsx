@@ -9,6 +9,8 @@ import { useTheme } from "../../../shared/context/ThemeContext";
 import { extractImagePaths } from "../../../shared/utils/extractImagePaths";
 import { uploadToSupabase } from "../../../shared/lib/SupabaseUploadAdapter";
 
+
+
 /* ---------------- SLUG GENERATOR ---------------- */
 const generateSlug = (text) =>
   text
@@ -65,7 +67,8 @@ function SubmissionNoteModal({ open, onClose, onSubmit }) {
 }
 
 /* ---------------- INVITE MODAL ---------------- */
-function InviteModal({ open, onClose, onInvite }) {
+function InviteModal({ open, onClose, onInvite, sendingInvite }) {
+
   const [email, setEmail] = useState("");
 
   if (!open) return null;
@@ -98,13 +101,14 @@ function InviteModal({ open, onClose, onInvite }) {
           >
             Cancel
           </button>
+<button
+  onClick={() => onInvite(email)}
+  disabled={sendingInvite}
+  className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50"
+>
+  {sendingInvite ? "Sending…" : "Send Invite"}
+</button>
 
-          <button
-            onClick={() => onInvite(email)}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white"
-          >
-            Send Invite
-          </button>
         </div>
       </div>
     </div>
@@ -121,13 +125,15 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
   const realBlogId = id || blogId || null;
   const isDark = theme === "dark";
   const isEditMode = Boolean(realBlogId);
-
+const [sendingInvite, setSendingInvite] = useState(false);
   const editorRef = useRef(null);
   const originalContentRef = useRef("");
   const originalSlugRef = useRef("");
   const wasPublishedRef = useRef(false);
 
   const [loading, setLoading] = useState(false);
+  
+
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
@@ -189,9 +195,10 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
   }, [realBlogId, user?.id]);
 
   /* ---------------- SEND INVITE ---------------- */
-  /* ---------------- SEND INVITE ---------------- */
 const sendInvite = async (email) => {
   if (!email.trim() || !realBlogId || !user?.id) return;
+
+  setSendingInvite(true);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -211,17 +218,15 @@ const sendInvite = async (email) => {
     token,
   });
 
-  /* ---------- GET JWT CORRECTLY ---------- */
   const { data: sessionData } = await supabase.auth.getSession();
   const jwt = sessionData.session?.access_token;
 
-  /* ---------- FINAL 401 FIX (REQUIRED HEADERS) ---------- */
   await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${jwt}`,
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, // 🔥 Mandatory fix
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
     },
     body: JSON.stringify({
       type: "collaboration-invite",
@@ -232,9 +237,12 @@ const sendInvite = async (email) => {
     }),
   });
 
-  alert("Invitation email sent!");
+  setSendingInvite(false);
+
+  alert("Invitation sent!");
   setShowInviteModal(false);
 };
+
 
 
   /* ---------------- ACCEPT COLLAB INVITE ---------------- */
@@ -612,11 +620,13 @@ const sendInvite = async (email) => {
         </button>
       </div>
 
-      <InviteModal
-        open={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        onInvite={sendInvite}
-      />
+    <InviteModal
+  open={showInviteModal}
+  onClose={() => setShowInviteModal(false)}
+  onInvite={sendInvite}
+  sendingInvite={sendingInvite}
+/>
+
 
       <SubmissionNoteModal
         open={showNoteModal}
