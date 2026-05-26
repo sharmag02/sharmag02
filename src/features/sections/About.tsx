@@ -138,7 +138,7 @@ export function About() {
                   {
                     icon: <MapPin className="text-blue-600" size={24} />,
                     title: "Location",
-                    desc: "Bilaspur, Chhattisgarh, India",
+                    desc: "Hajipur, Bihar, India",
                   },
                   {
                     icon: <Award className="text-blue-600" size={24} />,
