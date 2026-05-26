@@ -91,27 +91,44 @@ export function About() {
                     Introduction
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300 md:text-justify leading-relaxed">
-                    I’m Gaurav Kumar, a final-year B.Tech student in Electronics
-                    and Communication Engineering at SoSET, GGV Bilaspur. I have
-                    a strong interest in <b>Frontend VLSI design,</b> backed by
-                    a solid foundation in digital electronics and circuit
-                    design. I’m currently learning Verilog to strengthen my
-                    hardware-level understanding and design skills. <br />
-                    <br />
-                    Alongside VLSI, I’m exploring embedded systems, IoT, and
-                    real-world technology applications. I have basic experience
-                    with MATLAB for hardware interaction and hands-on experience
-                    in Python, C, and frontend development using ReactJS, HTML,
-                    and CSS. <br />
-                    <br />I have also contributed in leadership and
-                    collaborative roles— mentoring students through Fact App and
-                    EDUGLE, serving as a Placement Cell Coordinator, Content
-                    Manager at Solasta (Techfest), and Coordinator of{" "}
-                    <b>The Flip Flops,</b> the departmental newsletter. <br />
-                    <br />I love combining technical skills with teamwork and
-                    innovative problem-solving. I am open to opportunities in
-                    VLSI, IoT, and embedded technologies.
-                  </p>
+                     I’m <b>Gaurav Kumar</b>, a <b>B.Tech 2026 graduate</b> in 
+  <i>Electronics and Communication Engineering</i> from 
+  <u>Guru Ghasidas Vishwavidyalaya (GGV), Bilaspur</u>, with a strong interest in 
+  <b>Frontend VLSI Design</b>, <b>Digital Electronics</b>, and 
+  <b>Embedded Systems</b>. I enjoy working on hardware-focused problem-solving and continuously expanding my knowledge in 
+  <b>Verilog HDL</b>, <b>RTL Design</b>, <b>CMOS Design</b>, and 
+  <b>Functional Verification</b>.
+</p>
+
+<p>
+  I have hands-on experience with tools and technologies such as 
+  <b>Xilinx Vivado</b>, <b>Cadence Virtuoso</b>, <b>LTspice</b>, 
+  <b>MATLAB</b>, and <b>Proteus</b>, along with programming skills in 
+  <b>Python</b>, <b>JavaScript</b>, <b>HTML</b>, and <b>CSS</b>. 
+  My projects include <i>SRAM & DRAM Design and Analysis</i>, a 
+  <i>Moore FSM-based Traffic Light Controller</i>, and implementation of multiple combinational and sequential digital circuits using Verilog HDL.
+</p>
+
+<p>
+  Alongside technical development, I have actively contributed to leadership and mentoring initiatives. I mentored 
+  <b>50+ students</b> through <b>EDUGLE</b>, served as 
+  <b>Content Manager Lead</b> at <b>Equilibrio Techfest</b>, and coordinated student activities and newsletter workflows at 
+  <i>The Flip Flops</i>. These experiences strengthened my communication, leadership, and teamwork skills.
+</p>
+
+<p>
+  <span style="background-color:#fff3cd; color:#b8860b; padding:3px 8px; border-radius:6px; font-weight:bold;">
+    GATE ECE 2026 Qualified
+  </span>
+  <br><br>
+  I also received a <b>₹50,000 internship stipend</b> at 
+  <b>Fact App</b> for my technical contributions and performance.
+</p>
+
+<p>
+  Passionate about innovation and continuous learning, I am currently seeking opportunities in 
+  <b>VLSI</b>, <b>Embedded Systems</b>, and <b>IoT</b> domains where I can apply my technical skills, contribute to impactful projects, and grow as an engineer.
+</p>
                 </div>
               </div>
 
@@ -125,8 +142,8 @@ export function About() {
                   },
                   {
                     icon: <Award className="text-blue-600" size={24} />,
-                    title: "Technical Interests",
-                    desc: "VLSI, Embedded Systems, IoT",
+                    title: "Achievement",
+                    desc: "GATE ECE 2026 Qualified",
                   },
                   {
                     icon: <Goal className="text-blue-600" size={24} />,
@@ -136,7 +153,7 @@ export function About() {
                   {
                     icon: <Calendar className="text-blue-600" size={24} />,
                     title: "Current Focus",
-                    desc: "Frontend VLSI & Embedded Systems",
+                    desc: "Frontend VLSI, CMOS Design & Embedded Systems",
                   },
                 ].map((info, idx) => (
                   <div
