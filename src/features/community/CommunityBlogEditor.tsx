@@ -197,6 +197,8 @@ export default function CommunityBlogEditor({
   const [content, setContent] = useState<string>("");
   const [status, setStatus] = useState<string>("draft");
   const [authorId, setAuthorId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   const [submissionNote, setSubmissionNote] = useState<string>("");
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
@@ -212,6 +214,14 @@ export default function CommunityBlogEditor({
     if (!realBlogId || !user?.id) return;
 
     const fetchBlog = async () => {
+      const { data: categoryData } = await supabase
+  .from("blog_categories")
+  .select("*")
+  .order("name");
+
+if (categoryData) {
+  setCategories(categoryData);
+}
       const { data } = await supabase
         .from("community_blogs")
         .select("*")
@@ -225,6 +235,7 @@ export default function CommunityBlogEditor({
         setStatus(data.status);
         setAuthorId(data.author_id);
         setSubmissionNote(data.submission_note || "");
+        setSelectedCategory(data.category_id || "");
       }
 
       const { data: invite } = await supabase
@@ -343,6 +354,7 @@ if (
           author_id: user.id,
           status: "submitted",
           submission_note: submissionNote,
+          category_id: selectedCategory,
         });
 
         if (error) throw error;
@@ -389,6 +401,7 @@ if (status === "approved" || status === "rejected") {
           status: nextStatus,
           submission_note: submissionNote,
           updated_at: new Date().toISOString(),
+          category_id: selectedCategory,
         })
         .eq("id", realBlogId);
 
@@ -518,6 +531,31 @@ if (shouldSendResubmissionEmail) {
             placeholder="Short summary"
             onChange={(e) => setExcerpt(e.target.value)}
           />
+          <div className="space-y-2">
+  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+    Blog Section
+  </label>
+
+  <select
+    value={selectedCategory}
+    onChange={(e) => setSelectedCategory(e.target.value)}
+    className="
+      w-full p-3 rounded-xl
+      border border-gray-300 dark:border-slate-600
+      bg-white dark:bg-slate-800
+      text-gray-900 dark:text-white
+      outline-none
+    "
+  >
+    <option value="">Select Section</option>
+
+    {categories.map((cat) => (
+      <option key={cat.id} value={cat.id}>
+        {cat.name}
+      </option>
+    ))}
+  </select>
+</div>
 
           <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700 jodit-theme">
             <JoditEditor

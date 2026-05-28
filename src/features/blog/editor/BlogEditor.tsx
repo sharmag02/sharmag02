@@ -135,9 +135,17 @@ const [sendingInvite, setSendingInvite] = useState(false);
   
 
   const [title, setTitle] = useState("");
+ 
+const [slug, setSlug] = useState("");
+
+
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
   const [status, setStatus] = useState("draft");
+  const [categories, setCategories] = useState<any[]>([]);
+const [selectedCategory, setSelectedCategory] = useState("");
+const [newCategory, setNewCategory] = useState("");
+const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -146,29 +154,86 @@ const [sendingInvite, setSendingInvite] = useState(false);
   const [hasPendingInvite, setHasPendingInvite] = useState(false);
 
   const isAdmin = profile?.is_admin === true;
+ 
+
+/* ---------- AUTO GENERATE SLUG ---------- */
+useEffect(() => {
+
+  if (!title.trim()) return;
+
+  /* prevent overwriting manual slug edits in edit mode */
+  if (isEditMode && slug) return;
+
+  const generatedTitle =
+    generateSlug(title);
+
+  setSlug(generatedTitle);
+
+}, [title, isEditMode]);
+
+
+
+
 
   /* ---------------- FETCH BLOG ---------------- */
-  useEffect(() => {
-    if (!realBlogId || !user?.id) return;
 
-    const load = async () => {
-      const { data } = await supabase
-        .from("blogs")
+/* ---------------- FETCH BLOG + CATEGORIES ---------------- */
+useEffect(() => {
+
+  if (!user?.id) return;
+
+  const load = async () => {
+
+    /* ---------- LOAD CATEGORIES ---------- */
+    const { data: categoryData } =
+      await supabase
+        .from("blog_categories")
         .select("*")
-        .eq("id", realBlogId)
-        .single();
+        .order("name");
 
-      if (data) {
-        setTitle(data.title);
-        setExcerpt(data.excerpt);
-        setContent(data.content);
-        setStatus(data.status);
-        originalContentRef.current = data.content;
-        wasPublishedRef.current = data.published === true;
-        originalSlugRef.current = data.slug;
-      }
+    if (categoryData) {
+      setCategories(categoryData);
+    }
 
-      const { data: collab } = await supabase
+    /* ---------- NEW BLOG ---------- */
+    if (!realBlogId) return;
+
+    /* ---------- LOAD BLOG ---------- */
+    const { data } = await supabase
+      .from("blogs")
+      .select("*")
+      .eq("id", realBlogId)
+      .single();
+
+    if (data) {
+
+      setTitle(data.title);
+
+      setSlug(data.slug || "");
+
+      setExcerpt(data.excerpt);
+
+      setContent(data.content);
+
+      setStatus(data.status);
+
+      setSelectedCategory(
+        data.category_id || ""
+      );
+
+      originalContentRef.current =
+        data.content;
+
+      wasPublishedRef.current =
+        data.published === true;
+
+      originalSlugRef.current =
+        data.slug;
+    }
+
+    /* ---------- CHECK COLLABORATOR ---------- */
+    const { data: collab } =
+      await supabase
         .from("blog_collaborators")
         .select("id")
         .eq("blog_id", realBlogId)
@@ -176,9 +241,13 @@ const [sendingInvite, setSendingInvite] = useState(false);
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (collab) setIsCollaborator(true);
+    if (collab) {
+      setIsCollaborator(true);
+    }
 
-      const { data: invite } = await supabase
+    /* ---------- CHECK INVITE ---------- */
+    const { data: invite } =
+      await supabase
         .from("blog_invitations")
         .select("accepted")
         .eq("blog_id", realBlogId)
@@ -186,13 +255,19 @@ const [sendingInvite, setSendingInvite] = useState(false);
         .eq("invited_user_id", user.id)
         .maybeSingle();
 
-      if (invite && invite.accepted === false) {
-        setHasPendingInvite(true);
-      }
-    };
+    if (
+      invite &&
+      invite.accepted === false
+    ) {
+      setHasPendingInvite(true);
+    }
+  };
 
-    load();
-  }, [realBlogId, user?.id]);
+  load();
+
+}, [realBlogId, user?.id]);
+
+
 
   /* ---------------- SEND INVITE ---------------- */
 const sendInvite = async (email) => {
@@ -268,15 +343,48 @@ const sendInvite = async (email) => {
     setIsCollaborator(true);
     setHasPendingInvite(false);
   };
+  const createNewCategory = async () => {
+  if (!newCategory.trim()) return null;
+
+  const slug = generateSlug(newCategory);
+
+  const { data, error } = await supabase
+    .from("blog_categories")
+    .insert({
+      name: newCategory,
+      slug,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return null;
+  }
+
+  setCategories((prev) => [...prev, data]);
+  setSelectedCategory(data.id);
+  setNewCategory("");
+  setShowNewCategoryInput(false);
+
+  return data.id;
+};
 
   /* ---------------- SAVE HANDLER ---------------- */
   const handleSaveInternal = async (requestedStatus, submissionNote = null) => {
+    
+if (!selectedCategory) {
+  alert("Please select a category");
+  return;
+}
+
+
     setLoading(true);
 
     try {
       /* ---------------- CREATE NEW BLOG ---------------- */
       if (!isEditMode) {
-        const slug = generateSlug(title);
+       
 
         const { data, error } = await supabase
           .from("blogs")
@@ -292,6 +400,7 @@ const sendInvite = async (email) => {
             submission_note: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            category_id: selectedCategory,
           })
           .select()
           .single();
@@ -353,6 +462,7 @@ const sendInvite = async (email) => {
       if (isCollaborator) {
         const updateDataCollab = {
           title,
+          slug,
           excerpt,
           content,
           updated_at: new Date().toISOString(),
@@ -373,13 +483,16 @@ const sendInvite = async (email) => {
       /* ---------------- ADMIN UPDATE ---------------- */
       const updateDataAdmin = {
         title,
+        slug,
         excerpt,
         content,
+        
         updated_at: new Date().toISOString(),
         status: requestedStatus,
         published: requestedStatus === "published",
         is_edited: false,
         submission_note: requestedStatus === "published" ? null : undefined,
+        category_id: selectedCategory,
       };
 
       await supabase.from("blogs").update(updateDataAdmin).eq("id", realBlogId);
@@ -490,14 +603,90 @@ const sendInvite = async (email) => {
           placeholder="Enter blog title"
         />
 
+
+
+
         <input
           className="w-full bg-transparent outline-none
              border-b border-gray-300 dark:border-slate-600
              text-gray-800 dark:text-gray-200"
           value={excerpt}
           onChange={(e) => setExcerpt(e.target.value)}
-          placeholder="Short summary"
-        />
+          placeholder="Short summary"/>
+          <div className="space-y-3">
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+    Blog Category
+  </label>
+
+  <div className="flex gap-3">
+    <select
+      value={selectedCategory}
+      onChange={(e) => setSelectedCategory(e.target.value)}
+      className="
+        flex-1 p-3 rounded-xl
+        border border-gray-300 dark:border-slate-600
+        bg-white dark:bg-slate-800
+        text-gray-900 dark:text-white
+      "
+    >
+      <option value="">Select Category</option>
+
+      {categories.map((cat) => (
+        <option key={cat.id} value={cat.id}>
+          {cat.name}
+        </option>
+      ))}
+    </select>
+
+    {isAdmin && (
+      <button
+        type="button"
+        onClick={() =>
+          setShowNewCategoryInput(!showNewCategoryInput)
+        }
+        className="
+          px-4 py-2 rounded-xl
+          bg-blue-600 text-white
+          hover:bg-blue-700
+        "
+      >
+        New
+      </button>
+    )}
+  </div>
+
+  {showNewCategoryInput && isAdmin && (
+    <div className="flex gap-3">
+      <input
+        value={newCategory}
+        onChange={(e) => setNewCategory(e.target.value)}
+        placeholder="Enter new category"
+        className="
+          flex-1 p-3 rounded-xl
+          border border-gray-300 dark:border-slate-600
+          bg-white dark:bg-slate-800
+          text-gray-900 dark:text-white
+        "
+      />
+
+      <button
+        type="button"
+        onClick={async () => {
+          await createNewCategory();
+        }}
+        className="
+          px-5 py-2 rounded-xl
+          bg-green-600 text-white
+          hover:bg-green-700
+        "
+      >
+        Create
+      </button>
+    </div>
+  )}
+</div>
+        
+        
 
         <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700 jodit-theme">
           <JoditEditor

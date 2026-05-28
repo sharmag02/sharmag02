@@ -21,6 +21,7 @@ interface BlogDetailType {
   content: string;
   created_at: string;
   likes: number;
+  category?: { id: string; name: string; slug: string; };
   profiles: {
     full_name: string | null;
     email: string;
@@ -98,7 +99,7 @@ useEffect(() => {
       .from("blogs")
       .select(`
         *,
-        profiles:profiles!blogs_author_id_fkey(full_name,email)
+        profiles:profiles!blogs_author_id_fkey(full_name,email), category:blog_categories( id, name, slug )
       `)
       .eq("slug", slug)
       .eq("published", true) // ✔ correct filter
@@ -325,7 +326,7 @@ const coauthorNames = coauthors
         <div className="max-w-5xl mx-auto">
       {/* Back */}
       <button
-  onClick={() => navigate(-1)}
+ onClick={() => navigate( blog?.category?.slug ? `/blog/category/${blog.category.slug}` : "/blog" ) }
   className="
     flex items-center gap-2 mb-8
     text-slate-700 hover:text-blue-500
@@ -339,6 +340,7 @@ const coauthorNames = coauthors
 
       <article className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl p-10 leading-relaxed">
         <h1 className="text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100">
+          
           {blog.title}
         </h1>
 

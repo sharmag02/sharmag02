@@ -18,6 +18,7 @@ import AcceptInvite from "../pages/AcceptInvite";
 
 import BlogEditor from "../features/blog/editor/BlogEditor";       
 import CommunityBlogEditor from "../features/community/CommunityBlogEditor"; 
+import CategoryBlogs from "../features/blog/CategoryBlogs";
 
 import { BlogList } from "../features/blog/BlogList";
 import BlogDetail from "../features/blog/BlogDetail";
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/auth" element={<AuthTabs />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      
       <Route path="/invite/accept" element={<AcceptInvite />} />
 
       {/* MAIN APP */}
@@ -71,8 +73,20 @@ export default function App() {
                 <Route path="/certifications" element={<Certifications />} />
 
                 {/* PUBLIC BLOGS */}
-                <Route path="/blog" element={<BlogList />} />
-                <Route path="/blog/:slug" element={<BlogDetail />} />
+               <Route path="/blog" element={<BlogList />} />
+
+<Route
+  path="/blog/category/:slug"
+  element={<CategoryBlogs />}
+/>
+
+
+<Route
+  path="/blog/category/:categorySlug/:slug"
+  element={<BlogDetail />}
+/>
+
+
 
                 {/* COMMUNITY BLOG DETAIL */}
                 <Route path="/community-blog/:slug" element={<CommunityBlogDetail />} />
