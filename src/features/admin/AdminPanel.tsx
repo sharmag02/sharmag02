@@ -18,7 +18,7 @@ import SkillEditor from "../skills/editor/SkillEditor";
 import ExperienceEditor from "../experience/editor/ExperienceEditor";
 import { CertificationEditor } from "../certifications/editor/CertificationEditor";
 import CommunityBlogReview from "../community/CommunityBlogReview";
-import BlogCategoryManager from "../blog/BlogcategoryManager";
+import BlogCategoryManager from "../blog/BlogCategoryManager";
 
 // Theme
 import { useTheme } from "../../shared/context/ThemeContext";
@@ -62,8 +62,15 @@ export default function AdminPanel() {
     experiences: ExperienceEditor,
     certifications: CertificationEditor,
   } as const;
-
-  const EditorComponent = editorMap[activeType];
+const EditorComponent =
+  activeType === "contact_messages"
+    ? null
+    : editorMap[
+        activeType as Exclude<
+          ContentType,
+          "contact_messages"
+        >
+      ];
 
   /* ------------------ TABS ------------------ */
   const tabs = [
@@ -129,10 +136,15 @@ export default function AdminPanel() {
         query = supabase.from(activeType).select("*");
       }
 
-      const orderColumn =
-        activeType === "community_blogs"
-          ? "updated_at"
-          : "created_at";
+     let orderColumn = "created_at";
+
+if (activeType === "community_blogs") {
+  orderColumn = "updated_at";
+}
+
+if (activeType === "blog_categories") {
+  orderColumn = "name";
+}
 
       const { data, error } = await query.order(orderColumn, {
         ascending: false,
