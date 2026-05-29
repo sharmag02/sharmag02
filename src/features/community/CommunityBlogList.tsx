@@ -25,6 +25,11 @@ export default function CommunityBlogList() {
         published_at,
         updated_at,
         is_edited,
+        category:blog_categories(
+    id,
+    name,
+    slug
+  ),
         profiles:profiles!community_blogs_author_id_fkey(
           full_name,
           email
@@ -116,7 +121,9 @@ export default function CommunityBlogList() {
                 <article
                   key={blog.id}
                   onClick={() =>
-                    navigate(`/community-blog/${blog.slug}`)
+                    navigate(
+  `/community-blog/category/${blog.category.slug}/${blog.slug}`
+)
                   }
                   className="cursor-pointer rounded-2xl p-6 bg-white dark:bg-slate-800 shadow hover:shadow-xl transition flex flex-col"
                 >

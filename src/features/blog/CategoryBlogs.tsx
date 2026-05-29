@@ -87,6 +87,17 @@ const paginatedBlogs = blogs.slice(
           `)
           .eq("category_id", category.id)
           .eq("published", true);
+          const normalIds =
+  (normalBlogs || []).map((b) => b.id);
+
+const { data: blogCoauthorData } = await supabase
+  .from("blog_collaborators")
+  .select(`
+    blog_id,
+    profiles(full_name,email)
+  `)
+  .in("blog_id", normalIds)
+  .eq("blog_type", "blog");
 
         /* COMMUNITY BLOGS */
         const { data: communityBlogs } = await supabase
@@ -101,25 +112,71 @@ const paginatedBlogs = blogs.slice(
           .eq("category_id", category.id)
           .eq("status", "approved");
 
+          const communityIds =
+  (communityBlogs || []).map((b) => b.id);
+
+const { data: communityCoauthorData } =
+  await supabase
+    .from("blog_collaborators")
+    .select(`
+      blog_id,
+      profiles(full_name,email)
+    `)
+    .in("blog_id", communityIds)
+    .eq("blog_type", "community");
         /* MERGE */
         const mergedBlogs = [
-          ...(normalBlogs || []).map((b) => ({
-            ...b,
-            url: `/blog/category/${category.slug}/${b.slug}`,
-            type: "blog",
-            author:
-              b.profiles?.full_name ||
-              b.profiles?.email,
-          })),
+          ...(normalBlogs || []).map((b) => {
 
-          ...(communityBlogs || []).map((b) => ({
-            ...b,
-            url: `/community-blog/${b.slug}`,
-            type: "community",
-            author:
-              b.profiles?.full_name ||
-              b.profiles?.email,
-          })),
+  const coauthors =
+    (blogCoauthorData || [])
+      .filter((c) => c.blog_id === b.id)
+      .map(
+        (c) =>
+          c.profiles?.full_name ||
+          c.profiles?.email
+      );
+
+  return {
+    ...b,
+
+    url: `/blog/category/${category.slug}/${b.slug}`,
+
+    type: "blog",
+
+    author:
+      b.profiles?.full_name ||
+      b.profiles?.email,
+
+    coauthors,
+  };
+}),
+
+         ...(communityBlogs || []).map((b) => {
+
+  const coauthors =
+    (communityCoauthorData || [])
+      .filter((c) => c.blog_id === b.id)
+      .map(
+        (c) =>
+          c.profiles?.full_name ||
+          c.profiles?.email
+      );
+
+  return {
+    ...b,
+
+    url: `/community-blog/category/${category.slug}/${b.slug}`,
+
+    type: "community",
+
+    author:
+      b.profiles?.full_name ||
+      b.profiles?.email,
+
+    coauthors,
+  };
+})
         ].sort(
           (a, b) =>
             new Date(b.created_at).getTime() -
@@ -331,7 +388,17 @@ const paginatedBlogs = blogs.slice(
 
                     <div className="flex items-center gap-2">
                       <User size={14} />
-                      <span>{blog.author}</span>
+                     <span>
+  {blog.author}
+
+  {blog.coauthors &&
+    blog.coauthors.length > 0 && (
+      <span className="text-gray-500 dark:text-gray-400">
+        {" · with "}
+        {blog.coauthors.join(", ")}
+      </span>
+  )}
+</span>
                     </div>
 
                     <div className="flex items-center gap-2">

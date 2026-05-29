@@ -89,7 +89,10 @@ export default function App() {
 
 
                 {/* COMMUNITY BLOG DETAIL */}
-                <Route path="/community-blog/:slug" element={<CommunityBlogDetail />} />
+               <Route
+  path="/community-blog/category/:categorySlug/:slug"
+  element={<CommunityBlogDetail />}
+/>
 
                 <Route path="/contact" element={<Contact />} />
 

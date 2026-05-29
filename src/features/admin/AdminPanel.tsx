@@ -18,6 +18,7 @@ import SkillEditor from "../skills/editor/SkillEditor";
 import ExperienceEditor from "../experience/editor/ExperienceEditor";
 import { CertificationEditor } from "../certifications/editor/CertificationEditor";
 import CommunityBlogReview from "../community/CommunityBlogReview";
+import BlogCategoryManager from "../blog/BlogcategoryManager";
 
 // Theme
 import { useTheme } from "../../shared/context/ThemeContext";
@@ -25,6 +26,7 @@ import { useTheme } from "../../shared/context/ThemeContext";
 type ContentType =
   | "blogs"
   | "community_blogs"
+   | "blog_categories"
   | "projects"
   | "skills"
   | "experiences"
@@ -54,6 +56,7 @@ export default function AdminPanel() {
   const editorMap = {
     blogs: BlogEditor,
     community_blogs: CommunityBlogReview,
+    blog_categories: BlogCategoryManager,
     projects: ProjectEditor,
     skills: SkillEditor,
     experiences: ExperienceEditor,
@@ -66,6 +69,7 @@ export default function AdminPanel() {
   const tabs = [
     { key: "blogs", label: "MY BLOGS" },
     { key: "community_blogs", label: "COMMUNITY BLOGS" },
+    { key: "blog_categories", label: "BLOG CATEGORIES" },
     { key: "projects", label: "PROJECTS" },
     { key: "skills", label: "SKILLS" },
     { key: "experiences", label: "EXPERIENCES" },
@@ -116,7 +120,12 @@ export default function AdminPanel() {
           reply_at,
           created_at
         `);
-      } else {
+      }
+      else if (activeType === "blog_categories") {
+  query = supabase
+    .from("blog_categories")
+    .select("*");
+} else {
         query = supabase.from(activeType).select("*");
       }
 
@@ -165,13 +174,49 @@ export default function AdminPanel() {
   }, [activeType]);
 
   /* ------------------ DELETE ------------------ */
-  const handleDelete = async (id: string) => {
-    if (activeType === "community_blogs") return;
-    if (!confirm("Are you sure?")) return;
+ const handleDelete = async (id: string) => {
+  if (activeType === "community_blogs") return;
 
-    await supabase.from(activeType).delete().eq("id", id);
-    loadItems();
-  };
+  if (!confirm("Are you sure?")) return;
+
+ if (activeType === "blog_categories") {
+
+  const { count: blogCount } = await supabase
+    .from("blogs")
+    .select("*", {
+      count: "exact",
+      head: true,
+    })
+    .eq("category_id", id)
+    .eq("published", true);
+
+  const { count: communityCount } = await supabase
+    .from("community_blogs")
+    .select("*", {
+      count: "exact",
+      head: true,
+    })
+    .eq("category_id", id)
+    .eq("status", "approved");
+
+  const total =
+    (blogCount || 0) +
+    (communityCount || 0);
+
+  if (total > 0) {
+    alert(
+      `Category contains ${total} visible blog(s).`
+    );
+    return;
+  }
+}
+  await supabase
+    .from(activeType)
+    .delete()
+    .eq("id", id);
+
+  loadItems();
+};
 
   /* ------------------ APPROVE BLOG ------------------ */
   const approveBlog = async (id: string) => {
@@ -243,6 +288,9 @@ export default function AdminPanel() {
           key={editingId ?? "new"}
           {...(activeType === "blogs" ? { blogId: editingId } : {})}
           {...(activeType === "community_blogs" ? { blogId: editingId } : {})}
+           {...(activeType === "blog_categories"
+    ? { categoryId: editingId }
+    : {})}
           {...(activeType === "projects" ? { projectId: editingId } : {})}
           {...(activeType === "skills" ? { skillId: editingId } : {})}
           {...(activeType === "experiences" ? { experienceId: editingId } : {})}
@@ -404,7 +452,9 @@ export default function AdminPanel() {
             <Plus className="w-5 h-5 mr-2" />
             {activeType === "contact_messages"
               ? "Contact Message"
-              : `New ${activeType.replace("_", " ").slice(0, -1)}`}
+             : activeType === "blog_categories"
+? "New Blog Category"
+: `New ${activeType.replace("_", " ").slice(0, -1)}`}
           </button>
         </div>
 
@@ -498,11 +548,18 @@ export default function AdminPanel() {
                     </>
                   ) : (
                     <>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                        {item.title}
-                      </h3>
+             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+  {item.title || item.name}
+</h3>
+{activeType === "blog_categories" && (
+  <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
+    /{item.slug}
+  </p>
+)}
 
-                      {item.status && (
+
+                     {activeType !== "blog_categories" &&
+ item.status && (
                         <span
                           className={`inline-block mt-2 px-3 py-1 text-xs rounded-full font-semibold ${
                             item.status === "draft"
@@ -530,7 +587,8 @@ export default function AdminPanel() {
                         </span>
                       )}
 
-                      {item.submission_note && (
+                     {activeType !== "blog_categories" &&
+ item.submission_note && (
                         <div className="mt-3 space-y-3">
   <button
     onClick={() => setOpenNoteId(openNoteId === item.id ? null : item.id)}

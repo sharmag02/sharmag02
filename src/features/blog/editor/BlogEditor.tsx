@@ -382,6 +382,16 @@ if (!selectedCategory) {
     setLoading(true);
 
     try {
+      
+const selectedCategoryObj =
+  categories.find(
+    (c) => c.id === selectedCategory
+  );
+
+const selectedCategorySlug =
+  selectedCategoryObj?.slug || "";
+
+
       /* ---------------- CREATE NEW BLOG ---------------- */
       if (!isEditMode) {
        
@@ -400,7 +410,10 @@ if (!selectedCategory) {
             submission_note: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            category_id: selectedCategory,
+           category_id:
+  requestedStatus === "published"
+    ? selectedCategory
+    : null,
           })
           .select()
           .single();
@@ -417,12 +430,15 @@ if (!selectedCategory) {
 
         if (shouldSendEmailOnCreate) {
           /* ---------- FIX 1: Use REAL DB slug ---------- */
-          await supabase.from("email_queue").insert({
-            source: "blog",
-            title,
-            excerpt,
-            slug: data.slug, // FIXED
-          });
+          
+await supabase.from("email_queue").insert({
+  source: "blog",
+  title,
+  excerpt,
+  slug: `category/${selectedCategorySlug}/${data.slug}`,
+});
+
+
 
           /* ---------- FIX 2: Correct JWT ---------- */
           const { data: sessionData } = await supabase.auth.getSession();
@@ -492,7 +508,10 @@ if (!selectedCategory) {
         published: requestedStatus === "published",
         is_edited: false,
         submission_note: requestedStatus === "published" ? null : undefined,
-        category_id: selectedCategory,
+        category_id:
+  requestedStatus === "published"
+    ? selectedCategory
+    : null,
       };
 
       await supabase.from("blogs").update(updateDataAdmin).eq("id", realBlogId);

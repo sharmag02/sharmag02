@@ -193,6 +193,7 @@ export default function CommunityBlogEditor({
 
   const [loading, setLoading] = useState<boolean>(false);
   const [title, setTitle] = useState<string>("");
+  const [slug, setSlug] = useState<string>("");
   const [excerpt, setExcerpt] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [status, setStatus] = useState<string>("draft");
@@ -209,71 +210,84 @@ const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   const isAuthor = authorId === user?.id;
 
-  /* ---------------- FETCH BLOG ---------------- */
-  useEffect(() => {
-    if (!realBlogId || !user?.id) return;
+/* ---------------- FETCH BLOG + CATEGORIES ---------------- */
+useEffect(() => {
+  if (!user?.id) return;
 
-    const fetchBlog = async () => {
-      const { data: categoryData } = await supabase
-  .from("blog_categories")
-  .select("*")
-  .order("name");
+  const fetchBlog = async () => {
 
-if (categoryData) {
-  setCategories(categoryData);
-}
-      const { data } = await supabase
-        .from("community_blogs")
-        .select("*")
-        .eq("id", realBlogId)
-        .single();
+    /* LOAD CATEGORIES */
+    const { data: categoryData } = await supabase
+      .from("blog_categories")
+      .select("*")
+      .order("name");
 
-      if (data) {
-        setTitle(data.title);
-        setExcerpt(data.excerpt);
-        setContent(data.content);
-        setStatus(data.status);
-        setAuthorId(data.author_id);
-        setSubmissionNote(data.submission_note || "");
-        setSelectedCategory(data.category_id || "");
-      }
-
-      const { data: invite } = await supabase
-        .from("blog_invitations")
-        .select("accepted")
-        .eq("blog_id", realBlogId)
-        .eq("blog_type", "community")
-        .eq("invited_user_id", user.id)
-        .maybeSingle();
-
-      if (invite) {
-        setIsCollaborator(true);
-        setInviteAccepted(invite.accepted);
-      }
-    };
-
-    fetchBlog();
-  }, [realBlogId, user?.id]);
-
-  /* ---------------- SLUG GENERATOR ---------------- */
-  const generateSlug = async (title: string): Promise<string> => {
-    let base = slugify(title);
-    let slug = base;
-    let count = 1;
-
-    while (true) {
-      const { data } = await supabase
-        .from("community_blogs")
-        .select("id")
-        .eq("slug", slug)
-        .maybeSingle();
-
-      if (!data) break;
-      slug = `${base}-${count++}`;
+    if (categoryData) {
+      setCategories(categoryData);
     }
-    return slug;
+
+    /* NEW BLOG */
+    if (!realBlogId) return;
+
+    /* LOAD BLOG */
+    const { data } = await supabase
+      .from("community_blogs")
+      .select("*")
+      .eq("id", realBlogId)
+      .single();
+
+    if (data) {
+      setTitle(data.title);
+      setExcerpt(data.excerpt);
+      setContent(data.content);
+      setStatus(data.status);
+      setAuthorId(data.author_id);
+      setSubmissionNote(data.submission_note || "");
+      setSelectedCategory(data.category_id || "");
+    }
+
+    const { data: invite } = await supabase
+      .from("blog_invitations")
+      .select("accepted")
+      .eq("blog_id", realBlogId)
+      .eq("blog_type", "community")
+      .eq("invited_user_id", user.id)
+      .maybeSingle();
+
+    if (invite) {
+      setIsCollaborator(true);
+      setInviteAccepted(invite.accepted);
+    }
   };
 
+  fetchBlog();
+}, [realBlogId, user?.id]);
+
+  /* ---------------- SLUG GENERATOR ---------------- */
+  // const generateSlug = async (title: string): Promise<string> => {
+  //   let base = slugify(title);
+  //   let slug = base;
+  //   let count = 1;
+
+  //   while (true) {
+  //     const { data } = await supabase
+  //       .from("community_blogs")
+  //       .select("id")
+  //       .eq("slug", slug)
+  //       .maybeSingle();
+
+  //     if (!data) break;
+  //     slug = `${base}-${count++}`;
+  //   }
+  //   return slug;
+  // };
+
+  /* ---------- AUTO GENERATE SLUG ---------- */
+useEffect(() => {
+  if (!title.trim()) return;
+
+  setSlug(slugify(title));
+}, [title]);
   /* ---------------- SEND INVITE ---------------- */
   const sendInvite = async (email: string): Promise<void> => {
     if (!email || !user?.id || !realBlogId) return;
@@ -326,7 +340,12 @@ if (categoryData) {
 
   /* ---------------- SUBMIT HANDLER ---------------- */
   const finalSubmit = async (): Promise<void> => {
-    if (!title || !content) return;
+  if (!title || !content) return;
+
+if (!selectedCategory) {
+  alert("Please select a category");
+  return;
+}
 
    // Require submission note ONLY if resubmitting
 if (
@@ -344,7 +363,7 @@ if (
     try {
       /* ---------- CREATE NEW BLOG ---------- */
       if (!isEditMode) {
-        const slug = await generateSlug(title);
+        
 
         const { error } = await supabase.from("community_blogs").insert({
           title,
@@ -396,6 +415,7 @@ if (status === "approved" || status === "rejected") {
         .from("community_blogs")
         .update({
           title,
+          slug,
           excerpt,
           content,
           status: nextStatus,

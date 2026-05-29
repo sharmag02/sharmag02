@@ -22,6 +22,13 @@ interface BlogDetailType {
   created_at: string;
   published_at?: string;
   likes: number;
+
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+
   profiles: {
     full_name: string | null;
     email: string;
@@ -61,7 +68,11 @@ const addHeadingIds = (html: string) => {
 
 export default function BlogDetail() {
   const { user, profile } = useAuth();
-  const { slug } = useParams<{ slug: string }>();
+ const { categorySlug, slug } =
+  useParams<{
+    categorySlug: string;
+    slug: string;
+  }>();
   const navigate = useNavigate();
 
   const [blog, setBlog] = useState<BlogDetailType | null>(null);
@@ -97,18 +108,28 @@ useEffect(() => {
       .from("community_blogs")
       .select(`
         *,
-        profiles:profiles!community_blogs_author_id_fkey(full_name,email)
+        profiles:profiles!community_blogs_author_id_fkey(full_name,email),
+          category:blog_categories(
+    id,
+    name,
+    slug
+  )
       `)
       .eq("slug", slug)
       .eq("status", "approved")   // ✔ correct filter
       .maybeSingle();
 
-    if (error || !data) {
-      navigate("/community-blog");  // ✔ correct redirect
-      return;
-    }
+if (error || !data) {
+  navigate("/community-blog");
+  return;
+}
 
-    setBlog({
+if (data.category?.slug !== categorySlug) {
+  navigate("/community-blog");
+  return;
+}
+
+  setBlog({
   ...data,
   content: addHeadingIds(data.content),
 });
@@ -127,7 +148,7 @@ useEffect(() => {
   };
 
   loadBlog();
-}, [slug, navigate]);
+}, [slug, categorySlug, navigate]);
 
 
 /* ---------------- CHECK IF USER ALREADY LIKED ---------------- */
@@ -315,7 +336,13 @@ const handleLike = async () => {
         <div className="max-w-5xl mx-auto">
       {/* Back */}
       <button
-  onClick={() => navigate(-1)}
+ onClick={() =>
+  navigate(
+    blog?.category?.slug
+      ? `/community-blog/category/${blog.category.slug}`
+      : "/community-blog"
+  )
+}
   className="
     flex items-center gap-2 mb-8
     text-slate-700 hover:text-blue-500
@@ -323,7 +350,10 @@ const handleLike = async () => {
     font-medium
   "
 >
-  <ArrowLeft size={18} /> Back
+  <ArrowLeft size={18} />
+{blog?.category?.name
+  ? `Back to ${blog.category.name}`
+  : "Back"}
 </button>
 
       <article className="bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl p-10 leading-relaxed">

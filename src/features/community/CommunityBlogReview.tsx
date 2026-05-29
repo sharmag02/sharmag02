@@ -20,23 +20,30 @@ export default function CommunityBlogReview({ blogId, onSave, onCancel }: Props)
       const { data, error } = await supabase
         .from("community_blogs")
         .select(`
-          id,
-          title,
-          slug,
-          content,
-          excerpt,
-          status,
-          admin_feedback,
-          submission_note,
-          created_at,
-          updated_at,
-          published_at,
-          is_edited,
-          profiles:profiles!community_blogs_author_id_fkey(
-            full_name,
-            email
-          )
-        `)
+  id,
+  title,
+  slug,
+  content,
+  excerpt,
+  status,
+  admin_feedback,
+  submission_note,
+  created_at,
+  updated_at,
+  published_at,
+  is_edited,
+
+  category:blog_categories(
+    id,
+    name,
+    slug
+  ),
+
+  profiles:profiles!community_blogs_author_id_fkey(
+    full_name,
+    email
+  )
+`)
         .eq("id", blogId)
         .single();
 
@@ -98,7 +105,7 @@ export default function CommunityBlogReview({ blogId, onSave, onCancel }: Props)
           type: "community-approved",
           userEmail: blog.profiles.email,
           blogTitle: blog.title,
-          blogSlug: blog.slug,  // ✅ FIXED (was blogUrl)
+         blogSlug: `category/${blog.category.slug}/${blog.slug}`,
         }),
       });
 
@@ -108,13 +115,13 @@ export default function CommunityBlogReview({ blogId, onSave, onCancel }: Props)
       if (isFirstPublish) {
         try {
           const { error: queueError } = await supabase
-            .from("email_queue")
-            .insert({
-              source: "community_blog",
-              title: blog.title,
-              excerpt: blog.excerpt,
-              slug: blog.slug,
-            });
+  .from("email_queue")
+  .insert({
+    source: "community_blog",
+    title: blog.title,
+    excerpt: blog.excerpt,
+    slug: `category/${blog.category.slug}/${blog.slug}`,
+  });
 
           if (!queueError) {
             const { data: { session } } = await supabase.auth.getSession();
@@ -154,14 +161,16 @@ export default function CommunityBlogReview({ blogId, onSave, onCancel }: Props)
     setProcessing(true);
 
     try {
-      const { error } = await supabase
-        .from("community_blogs")
-        .update({
-          status: "rejected",
-          admin_feedback: adminFeedback || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", blogId);
+     const { error } = await supabase
+  .from("community_blogs")
+  .update({
+    status: "rejected",
+    admin_feedback: adminFeedback || null,
+    updated_at: new Date().toISOString(),
+
+    category_id: null,
+  })
+  .eq("id", blogId);
 
       if (error) throw error;
 
