@@ -58,7 +58,7 @@ export default function Sidebar() {
         <div className="flex flex-col items-center text-center">
           <div className="relative">
             <img
-              src="/pdf/photo.jpeg"
+              src="/pdf/photo.JPG"
               alt="Gaurav Kumar"
               className="
                 w-24 h-24
@@ -75,7 +75,7 @@ export default function Sidebar() {
           </h2>
 
           <p className="text-sm text-blue-400 leading-tight">
-            Frontend • VLSI Engineer
+             GATE EC'26 Qualified
           </p>
 
           {profile?.is_admin && (

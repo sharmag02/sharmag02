@@ -1,5 +1,5 @@
 /* YOUR ORIGINAL IMPORTS – UNTOUCHED */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import JoditEditor from "jodit-react";
 import { Save, X } from "lucide-react";
@@ -126,7 +126,7 @@ export default function BlogEditor({ blogId, onSave, onCancel }) {
   const isDark = theme === "dark";
   const isEditMode = Boolean(realBlogId);
 const [sendingInvite, setSendingInvite] = useState(false);
-  const editorRef = useRef(null);
+  const editorRef = useRef<any>(null);
   const originalContentRef = useRef("");
   const originalSlugRef = useRef("");
   const wasPublishedRef = useRef(false);
@@ -154,7 +154,112 @@ const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [hasPendingInvite, setHasPendingInvite] = useState(false);
 
   const isAdmin = profile?.is_admin === true;
- 
+ const editorConfig = useMemo(
+  () => ({
+    readonly: false,
+    height: 520,
+    theme: isDark ? "dark" : "default",
+    toolbarAdaptive: false,
+    toolbarSticky: false,
+
+    plugins: {
+      lineHeight: true,
+      indent: true,
+      symbols: true,
+      find: true,
+      print: true,
+      classSpan: true,
+      source: true,
+    },
+
+    buttons: [
+      "bold",
+                "italic",
+                "underline",
+                "strikethrough",
+                "|",
+                "superscript",
+                "subscript",
+                "|",
+                "ul",
+                "ol",
+                "indent",
+                "outdent",
+                "|",
+                "fontsize",
+                "lineHeight",
+                "brush",
+                "paragraph",
+                "align",
+                "|",
+                "link",
+                "uploadImage",
+                "video",
+                "file",
+                "table",
+                "hr",
+                "|",
+                "symbols",
+                "find",
+                "|",
+                "classSpan",
+                "source",
+                "|",
+                "print",
+                "undo",
+                "redo",
+                "preview",
+                "fullsize",
+    ],
+
+    controls: {
+      uploadImage: {
+        icon: "image",
+        tooltip: "Upload Image",
+
+        exec: async (editor: any) => {
+          const input =
+            document.createElement("input");
+
+          input.type = "file";
+          input.accept = "image/*";
+
+          input.onchange = async () => {
+            const file =
+              input.files?.[0];
+
+            if (!file) return;
+
+            const savedSelection =
+              editor.selection.save();
+
+            try {
+              const url =
+                await uploadToSupabase(file);
+
+              editor.selection.restore(
+                savedSelection
+              );
+
+              editor.selection.insertImage(
+                url
+              );
+
+            } catch (err) {
+              console.error(err);
+              alert(
+                "Image upload failed"
+              );
+            }
+          };
+
+          input.click();
+        },
+      },
+    },
+  }),
+  [isDark]
+);
 
 /* ---------- AUTO GENERATE SLUG ---------- */
 useEffect(() => {
@@ -708,95 +813,14 @@ await supabase.from("email_queue").insert({
         
 
         <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-700 jodit-theme">
-          <JoditEditor
-            ref={editorRef}
-            value={content}
-            config={{
-              readonly: false,
-              height: 520,
-              theme: isDark ? "dark" : "default",
-              toolbarAdaptive: false,
-              toolbarSticky: false,
-
-              plugins: {
-                lineHeight: true,
-                indent: true,
-                symbols: true,
-                find: true,
-                print: true,
-                classSpan: true,
-                source: true,
-              },
-
-              buttons: [
-                "bold",
-                "italic",
-                "underline",
-                "strikethrough",
-                "|",
-                "superscript",
-                "subscript",
-                "|",
-                "ul",
-                "ol",
-                "indent",
-                "outdent",
-                "|",
-                "fontsize",
-                "lineHeight",
-                "brush",
-                "paragraph",
-                "align",
-                "|",
-                "link",
-                "uploadImage",
-                "video",
-                "file",
-                "table",
-                "hr",
-                "|",
-                "symbols",
-                "find",
-                "|",
-                "classSpan",
-                "source",
-                "|",
-                "print",
-                "undo",
-                "redo",
-                "preview",
-                "fullsize",
-              ],
-
-              controls: {
-                uploadImage: {
-                  icon: "image",
-                  tooltip: "Upload Image",
-                  exec: async (editor: any) => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*";
-
-                    input.onchange = async () => {
-                      const file = input.files?.[0];
-                      if (!file) return;
-
-                      try {
-                        const url = await uploadToSupabase(file);
-                        editor.selection.insertImage(url);
-                      } catch (err) {
-                        console.error(err);
-                        alert("Image upload failed");
-                      }
-                    };
-
-                    input.click();
-                  },
-                },
-              },
-            }}
-            onBlur={(v) => setContent(v)}
-          />
+        <JoditEditor
+  ref={editorRef}
+  value={content}
+  config={editorConfig}
+  onChange={(v) => {
+    setContent(v);
+  }}
+/>
         </div>
       </div>
 

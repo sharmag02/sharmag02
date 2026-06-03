@@ -46,7 +46,7 @@ export  function LoadingScreen() {
             style={{ animationDirection: "reverse", animationDuration: "1.2s" }}
           ></div>
           <img
-            src="pdf/photo.jpeg"   // <-- Change to your image path
+            src="pdf/photos.jpg"   // <-- Change to your image path
             alt="Loading"
             className="absolute inset-0 w-28 h-28 m-auto rounded-full object-cover shadow-xl"
           />

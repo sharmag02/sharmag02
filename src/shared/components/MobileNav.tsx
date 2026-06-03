@@ -91,12 +91,12 @@ export default function MobileNav() {
           {/* ================= PROFILE ================= */}
           <div className="text-center mb-6">
             <img
-              src="/pdf/photo.jpeg"
+              src="/pdf/photo.JPG"
               className="w-24 h-24 mx-auto rounded-full border-4 border-blue-500"
               alt="Profile"
             />
             <h2 className="mt-2 font-semibold">Gaurav Kumar</h2>
-            <p className="text-sm text-blue-400">Frontend • VLSI Engineer</p>
+            <p className="text-sm text-blue-400"> GATE EC'26 Qualified</p>
 
             {user && (
               <p className="text-xs mt-1 text-slate-400">
