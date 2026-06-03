@@ -22,6 +22,7 @@ interface BlogDetailType {
   created_at: string;
   published_at?: string;
   likes: number;
+  views: number;
 
   category?: {
     id: string;
@@ -123,7 +124,20 @@ if (error || !data) {
   navigate("/community-blog");
   return;
 }
+const viewKey = `viewed_community_${data.id}`;
 
+if (!sessionStorage.getItem(viewKey)) {
+  await supabase
+    .from("community_blogs")
+    .update({
+      views: (data.views || 0) + 1,
+    })
+    .eq("id", data.id);
+
+  sessionStorage.setItem(viewKey, "true");
+
+  data.views = (data.views || 0) + 1;
+}
 if (data.category?.slug !== categorySlug) {
   navigate("/community-blog");
   return;
@@ -414,7 +428,9 @@ const handleLike = async () => {
           <button onClick={handleLike} className="flex items-center gap-2 text-red-500 hover:scale-105 transition">
             <Heart size={20} /> {likes}
           </button>
-
+<div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+  👁 {blog.views || 0}
+</div>
           <button
   onClick={handleShare}
   className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-400 transition"

@@ -31,7 +31,9 @@ type ContentType =
   | "skills"
   | "experiences"
   | "certifications"
-  | "contact_messages";
+   | "contact_messages"
+  | "blog_subscribers"
+  | "profiles";
 
 export default function AdminPanel() {
   const { theme } = useTheme();
@@ -63,12 +65,16 @@ export default function AdminPanel() {
     certifications: CertificationEditor,
   } as const;
 const EditorComponent =
-  activeType === "contact_messages"
+  activeType === "contact_messages" ||
+  activeType === "blog_subscribers" ||
+  activeType === "profiles"
     ? null
     : editorMap[
         activeType as Exclude<
           ContentType,
-          "contact_messages"
+          "contact_messages" |
+          "blog_subscribers" |
+          "profiles"
         >
       ];
 
@@ -82,6 +88,8 @@ const EditorComponent =
     { key: "experiences", label: "EXPERIENCES" },
     { key: "certifications", label: "CERTIFICATIONS" },
     { key: "contact_messages", label: "CONTACT MESSAGES" },
+    { key: "blog_subscribers", label: "SUBSCRIBERS" },
+{ key: "profiles", label: "PROFILES" },
   ] as const;
 
   /* ------------------ FETCH ITEMS ------------------ */
@@ -132,7 +140,18 @@ const EditorComponent =
   query = supabase
     .from("blog_categories")
     .select("*");
-} else {
+} else if (activeType === "blog_subscribers") {
+  query = supabase
+    .from("blog_subscribers")
+    .select("*");
+}
+
+else if (activeType === "profiles") {
+  query = supabase
+    .from("profiles")
+    .select("*");
+}
+else {
         query = supabase.from(activeType).select("*");
       }
 
@@ -144,6 +163,14 @@ if (activeType === "community_blogs") {
 
 if (activeType === "blog_categories") {
   orderColumn = "name";
+}
+if (activeType === "blog_subscribers") {
+  orderColumn = "subscribed_at";
+   orderColumn = "is_active";
+}
+
+if (activeType === "profiles") {
+  orderColumn = "full_name";
 }
 
       const { data, error } = await query.order(orderColumn, {
@@ -442,21 +469,27 @@ if (activeType === "blog_categories") {
         <div className="flex justify-start md:justify-end mb-6">
           <button
             disabled={
-              activeType === "contact_messages" ||
-              activeType === "community_blogs"
-            }
+  activeType === "contact_messages" ||
+  activeType === "community_blogs" ||
+  activeType === "blog_subscribers" ||
+  activeType === "profiles"
+}
             onClick={() => {
-              if (
-                activeType === "contact_messages" ||
-                activeType === "community_blogs"
-              )
+             if (
+  activeType === "contact_messages" ||
+  activeType === "community_blogs" ||
+  activeType === "blog_subscribers" ||
+  activeType === "profiles"
+)
                 return;
               setEditingId(null);
               setIsCreating(true);
             }}
             className={`flex items-center px-6 py-3 rounded-lg font-semibold transition ${
               activeType === "contact_messages" ||
-              activeType === "community_blogs"
+activeType === "community_blogs" ||
+activeType === "blog_subscribers" ||
+activeType === "profiles"
                 ? "bg-gray-400 cursor-not-allowed text-gray-700"
                 : "bg-blue-600 text-white hover:bg-blue-500"
             }`}
@@ -490,143 +523,199 @@ if (activeType === "blog_categories") {
                 {/* LEFT CONTENT */}
                 <div className="flex-1 w-full">
 
-                  {activeType === "contact_messages" ? (
-                    <>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                        {item.name}
-                      </h3>
+  {activeType === "contact_messages" ? (
 
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                        {item.email}
-                      </p>
+    <>
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+        {item.name}
+      </h3>
 
-                      {item.reply_sent ? (
-                        <span className="inline-block mt-2 px-3 py-1 text-xs rounded-full bg-green-200 text-green-800 font-semibold">
-                          REPLIED
-                        </span>
-                      ) : (
-                        <span className="inline-block mt-2 px-3 py-1 text-xs rounded-full bg-yellow-200 text-yellow-800 font-semibold">
-                          PENDING
-                        </span>
-                      )}
+      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+        {item.email}
+      </p>
 
-                      {openNoteId === item.id && (
-                        <div
-                          className={`mt-4 p-4 rounded-lg border text-sm ${
-                            theme === "light"
-                              ? "bg-gray-100 border-gray-300 text-gray-800"
-                              : "bg-slate-900/60 border-slate-700 text-slate-200"
-                          }`}
-                        >
-                          <p>
-                            <b>Telegram:</b> {item.telegram}
-                          </p>
-                          <p>
-                            <b>Subject:</b> {item.subject}
-                          </p>
+      {item.reply_sent ? (
+        <span className="inline-block mt-2 px-3 py-1 text-xs rounded-full bg-green-200 text-green-800 font-semibold">
+          REPLIED
+        </span>
+      ) : (
+        <span className="inline-block mt-2 px-3 py-1 text-xs rounded-full bg-yellow-200 text-yellow-800 font-semibold">
+          PENDING
+        </span>
+      )}
 
-                          <p className="mt-2">
-                            <b>Message:</b>
-                          </p>
+      {openNoteId === item.id && (
+        <div
+          className={`mt-4 p-4 rounded-lg border text-sm ${
+            theme === "light"
+              ? "bg-gray-100 border-gray-300 text-gray-800"
+              : "bg-slate-900/60 border-slate-700 text-slate-200"
+          }`}
+        >
+          <p>
+            <b>Telegram:</b> {item.telegram}
+          </p>
 
-                          <div
-                            className={`mt-1 p-3 rounded-md whitespace-pre-wrap w-full text-sm md:text-base ${
-                              theme === "light"
-                                ? "bg-gray-200 text-gray-800"
-                                : "bg-slate-800 text-slate-200"
-                            }`}
-                          >
-                            {item.message}
-                          </div>
+          <p>
+            <b>Subject:</b> {item.subject}
+          </p>
 
-                          {item.admin_reply && (
-                            <div className="mt-4">
-                              <p className="font-semibold text-blue-600 dark:text-blue-300">
-                                Admin Reply:
-                              </p>
-                              <div
-                                className={`mt-1 p-3 rounded-md whitespace-pre-wrap w-full text-sm md:text-base ${
-                                  theme === "light"
-                                    ? "bg-blue-100 text-blue-900"
-                                    : "bg-blue-900/40 text-blue-200"
-                                }`}
-                              >
-                                {item.admin_reply}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-  {item.title || item.name}
-</h3>
-{activeType === "blog_categories" && (
-  <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
-    /{item.slug}
-  </p>
-)}
+          <p className="mt-2">
+            <b>Message:</b>
+          </p>
 
+          <div
+            className={`mt-1 p-3 rounded-md whitespace-pre-wrap w-full text-sm md:text-base ${
+              theme === "light"
+                ? "bg-gray-200 text-gray-800"
+                : "bg-slate-800 text-slate-200"
+            }`}
+          >
+            {item.message}
+          </div>
 
-                     {activeType !== "blog_categories" &&
- item.status && (
-                        <span
-                          className={`inline-block mt-2 px-3 py-1 text-xs rounded-full font-semibold ${
-                            item.status === "draft"
-                              ? theme === "light"
-                                ? "bg-yellow-300 text-yellow-800"
-                                : "bg-yellow-500/20 text-yellow-300"
-                              : item.status === "submitted"
-                              ? theme === "light"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-blue-500/20 text-blue-300"
-                              : item.status === "resubmitted"
-                              ? theme === "light"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-purple-500/20 text-purple-300"
-                              : item.status === "rejected"
-                              ? theme === "light"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-red-500/20 text-red-300"
-                              : theme === "light"
-                              ? "bg-green-300 text-green-700"
-                              : "bg-green-600/20 text-green-400"
-                          }`}
-                        >
-                          {item.status.toUpperCase()}
-                        </span>
-                      )}
+          {item.admin_reply && (
+            <div className="mt-4">
+              <p className="font-semibold text-blue-600 dark:text-blue-300">
+                Admin Reply:
+              </p>
 
-                     {activeType !== "blog_categories" &&
- item.submission_note && (
-                        <div className="mt-3 space-y-3">
-  <button
-    onClick={() => setOpenNoteId(openNoteId === item.id ? null : item.id)}
-    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 mb-2"
-  >
-    {openNoteId === item.id ? <EyeOff size={16} /> : <Eye size={16} />}
-    View Submission Note
-  </button>
+              <div
+                className={`mt-1 p-3 rounded-md whitespace-pre-wrap w-full text-sm md:text-base ${
+                  theme === "light"
+                    ? "bg-blue-100 text-blue-900"
+                    : "bg-blue-900/40 text-blue-200"
+                }`}
+              >
+                {item.admin_reply}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </>
 
-  {openNoteId === item.id && (
-    <div
-      className={`p-3 rounded-lg whitespace-pre-wrap border text-sm ${
-        theme === "light"
-          ? "bg-gray-100 border-gray-300 text-gray-800"
-          : "bg-slate-900/60 border-slate-700 text-slate-200"
-      }`}
-    >
-      {item.submission_note}
-    </div>
+  ) : activeType === "blog_subscribers" ? (
+
+    <>
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+        {item.email}
+      </h3>
+
+      {item.name && (
+        <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
+          {item.name}
+        </p>
+      )}
+
+      <span
+        className={`inline-block mt-3 px-3 py-1 rounded-full text-xs font-semibold ${
+          item.is_active
+            ? "bg-green-400 text-green-800"
+            : "bg-red-100 text-red-700"
+        }`}
+      >
+        {item.is_active
+          ? "ACTIVE"
+          : "UNSUBSCRIBED"}
+      </span>
+    </>
+
+  ) : activeType === "profiles" ? (
+
+    <>
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+        {item.full_name}
+      </h3>
+
+      <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
+        {item.email}
+      </p>
+    </>
+
+  ) : (
+
+    <>
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+        {item.title || item.name}
+      </h3>
+
+      {activeType === "blog_categories" && (
+        <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
+          /{item.slug}
+        </p>
+      )}
+
+      {activeType !== "blog_categories" &&
+        item.status && (
+          <span
+            className={`inline-block mt-2 px-3 py-1 text-xs rounded-full font-semibold ${
+              item.status === "draft"
+                ? theme === "light"
+                  ? "bg-yellow-300 text-yellow-800"
+                  : "bg-yellow-500/20 text-yellow-300"
+                : item.status === "submitted"
+                ? theme === "light"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-blue-500/20 text-blue-300"
+                : item.status === "resubmitted"
+                ? theme === "light"
+                  ? "bg-purple-100 text-purple-800"
+                  : "bg-purple-500/20 text-purple-300"
+                : item.status === "rejected"
+                ? theme === "light"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-red-500/20 text-red-300"
+                : theme === "light"
+                ? "bg-green-300 text-green-700"
+                : "bg-green-600/20 text-green-400"
+            }`}
+          >
+            {item.status.toUpperCase()}
+          </span>
+      )}
+
+      {activeType !== "blog_categories" &&
+        item.submission_note && (
+          <div className="mt-3 space-y-3">
+
+            <button
+              onClick={() =>
+                setOpenNoteId(
+                  openNoteId === item.id
+                    ? null
+                    : item.id
+                )
+              }
+              className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 mb-2"
+            >
+              {openNoteId === item.id
+                ? <EyeOff size={16} />
+                : <Eye size={16} />
+              }
+
+              View Submission Note
+            </button>
+
+            {openNoteId === item.id && (
+              <div
+                className={`p-3 rounded-lg whitespace-pre-wrap border text-sm ${
+                  theme === "light"
+                    ? "bg-gray-100 border-gray-300 text-gray-800"
+                    : "bg-slate-900/60 border-slate-700 text-slate-200"
+                }`}
+              >
+                {item.submission_note}
+              </div>
+            )}
+
+          </div>
+      )}
+    </>
+
   )}
-</div>
 
-                      )}
-                    </>
-                  )}
-                </div>
+</div>
 
                 {/* ACTION BUTTONS */}
                 <div className="flex items-center gap-4 ml-4">
@@ -666,12 +755,15 @@ if (activeType === "blog_categories") {
                     </>
                   ) : (
                     <>
-                      <button
-                        onClick={() => setEditingId(item.id)}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <Edit />
-                      </button>
+                      {activeType !== "blog_subscribers" &&
+ activeType !== "profiles" && (
+  <button
+    onClick={() => setEditingId(item.id)}
+    className="text-blue-600 hover:text-blue-700"
+  >
+    <Edit />
+  </button>
+)}
 
                       {activeType === "blogs" && item.status === "draft" && (
                         <button
@@ -682,14 +774,16 @@ if (activeType === "blog_categories") {
                         </button>
                       )}
 
-                      {activeType !== "community_blogs" && (
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 />
-                        </button>
-                      )}
+                     {activeType !== "community_blogs" &&
+ activeType !== "blog_subscribers" &&
+ activeType !== "profiles" && (
+  <button
+    onClick={() => handleDelete(item.id)}
+    className="text-red-600 hover:text-red-700"
+  >
+    <Trash2 />
+  </button>
+)}
                     </>
                   )}
                 </div>

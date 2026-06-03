@@ -7,9 +7,11 @@ export function Hero() {
   const navigate = useNavigate();
 
   const texts = [
-    "Frontend Web Developer",
+    "GATE ECE 2026 Qualified",
+    
     "Aspiring VLSI Frontend Engineer",
     "Aspiring RTL Design Engineer",
+    "Frontend Web Developer",
   ];
 
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -122,7 +124,7 @@ export function Hero() {
               ✕
             </button>
             <iframe
-              src="pdf/Gaurav Kumar_Resume.pdf"
+              src="pdf/Gaurav_Kumar_Resume.pdf"
               className="w-full h-[80vh]"
               title="Resume"
             />

@@ -21,6 +21,7 @@ interface BlogDetailType {
   content: string;
   created_at: string;
   likes: number;
+  views: number;
   category?: { id: string; name: string; slug: string; };
   profiles: {
     full_name: string | null;
@@ -109,6 +110,20 @@ useEffect(() => {
       navigate("/blog");  // ✔ correct redirect
       return;
     }
+    const viewKey = `viewed_blog_${data.id}`;
+
+if (!sessionStorage.getItem(viewKey)) {
+  await supabase
+    .from("blogs")
+    .update({
+      views: (data.views || 0) + 1,
+    })
+    .eq("id", data.id);
+
+  sessionStorage.setItem(viewKey, "true");
+
+  data.views = (data.views || 0) + 1;
+}
 
     setBlog({
   ...data,
@@ -392,22 +407,27 @@ const coauthorNames = coauthors
         
 
         {/* ACTIONS */}
-        <div className="flex gap-6 mb-10">
-          <button
-            onClick={handleLike}
-            className="flex items-center gap-2 text-red-500 hover:scale-105 transition"
-          >
-            <Heart size={20} /> {likes}
-          </button>
+      <div className="flex gap-6 mb-10">
 
-         <button
-  onClick={handleShare}
-  className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-400 transition"
->
-  <Share2 size={20} /> Share
-</button>
+  <button
+    onClick={handleLike}
+    className="flex items-center gap-2 text-red-500 hover:scale-105 transition"
+  >
+    <Heart size={20} /> {likes}
+  </button>
 
-        </div>
+  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+    👁 {blog.views || 0}
+  </div>
+
+  <button
+    onClick={handleShare}
+    className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-400 transition"
+  >
+    <Share2 size={20} /> Share
+  </button>
+
+</div>
 
         {/* TABLE OF CONTENTS */}
        {/* TOC */}
