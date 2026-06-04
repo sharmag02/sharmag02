@@ -8,11 +8,127 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NextPageArrow } from "../../shared/components/NextPageArrow";
+import { motion, useInView, AnimatePresence } from "framer-motion";
+import CountUp from "react-countup";
+
+import { useRef } from "react";
+
 
 
 // Type for tabs
 type TabType = "profile" | "education";
 
+function CounterCard({
+  value,
+  label,
+  prefix = "",
+  suffix = "",
+}: {
+  value: number;
+  label: string;
+  prefix?: string;
+  suffix?: string;
+}) {
+  const ref = useRef(null);
+
+  const isInView = useInView(ref, {
+    amount: 0.5,
+  });
+
+  return (
+    <motion.div
+      ref={ref}
+      className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl p-6 text-center shadow-lg rounded-lg  cursor-pointer hover:shadow-[0_0_25px_#3b82f6] dark:hover:shadow-[0_0_25px_#3b82f6]"
+      initial={{
+        opacity: 0,
+        y: 50,
+        scale: 0.95,
+      }}
+       animate={
+    isInView
+      ? {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+        }
+      : {
+          opacity: 0,
+          y: 50,
+          scale: 0.95,
+        }
+  }
+      viewport={{
+        amount: 0.5,
+      }}
+      transition={{
+        duration: 0.6,
+      }}
+    >
+      <h3 className="text-3xl font-bold">
+        {prefix}
+{isInView ? (
+  <CountUp
+    key={Date.now()}
+    start={0}
+    end={value}
+    duration={2}
+    decimals={value % 1 ? 2 : 0}
+  />
+) : (
+  0
+)}
+
+        {suffix}
+      </h3>
+
+      <p className="mt-2 text-sm">{label}</p>
+    </motion.div>
+  );
+}
+function QuickInfoCard({
+  icon,
+  title,
+  desc,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 50,
+      }}
+      whileInView={{
+        opacity: 1,
+        y: 0,
+      }}
+      viewport={{
+        amount: 0.1,
+      }}
+      transition={{
+        duration: 0.5,
+      }}
+      whileHover={{
+        scale: 1.05,
+      }}
+      className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-gray-700 rounded-lg  cursor-pointer hover:shadow-[0_0_25px_#3b82f6] dark:hover:shadow-[0_0_25px_#3b82f6]"
+    >
+      {icon}
+
+      <div>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          {title}
+        </p>
+
+        <p className="font-semibold text-slate-900 dark:text-white">
+          {desc}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
 export function About() {
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   const [modalContent, setModalContent] = useState<string | null>(null);
@@ -22,70 +138,129 @@ export function About() {
 
   return (
     <section
+    
       id="about"
       className="relative min-h-screen py-6 px-6 bg-slate-50 dark:bg-gray-900"
     >
       <div className="max-w-6xl mx-auto">
         {/* Section Heading */}
-        <div className="text-center mb-12">
+       <motion.div
+  className="text-center mb-12"
+  initial={{ opacity: 0, y: -40 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{amount: 0.3}}
+  transition={{ duration: 0.8 }}
+>
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
             About Me
           </h2>
           <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-teal-500 mx-auto rounded-full"></div>
-        </div>
+       </motion.div>
 
         {/* MOBILE TAB MENU */}
         <div className="flex justify-center mb-4 lg:hidden border-b border-gray-200 dark:border-gray-700">
-          {[
-            { key: "profile", label: "Profile", icon: <User size={18} /> },
-            { key: "education", label: "Education", icon: <GraduationCap size={18} /> },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as TabType)}
-              className={`relative flex items-center gap-1 px-4 py-2 text-base font-semibold text-gray-600 dark:text-gray-300 transition-all ${
-                activeTab === tab.key
-                  ? "text-blue-600 dark:text-blue-400 after:absolute after:left-0 after:bottom-0 after:w-full after:h-1 after:rounded-full after:bg-gradient-to-r after:from-blue-500 after:to-pink-500"
-                  : "hover:text-blue-500 dark:hover:text-blue-300"
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
+  {[
+    { key: "profile", label: "Profile", icon: <User size={18} /> },
+    { key: "education", label: "Education", icon: <GraduationCap size={18} /> },
+  ].map((tab) => (
+    <button
+      key={tab.key}
+      onClick={() => setActiveTab(tab.key as TabType)}
+      className={`relative flex items-center gap-1 px-4 py-2 text-base font-semibold transition-colors duration-300 ${
+        activeTab === tab.key
+          ? "text-blue-600 dark:text-blue-400"
+          : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-300"
+      }`}
+    >
+      {activeTab === tab.key && (
+        <motion.div
+          layoutId="mobileTabIndicator"
+          className="absolute bottom-0 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-blue-500 to-pink-500"
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 35,
+          }}
+        />
+      )}
+
+      <span className="relative z-10 flex items-center gap-1">
+        {tab.icon}
+        {tab.label}
+      </span>
+    </button>
+  ))}
+</div>
 
         {/* DESKTOP TAB MENU */}
         <div className="hidden lg:flex justify-center mb-6">
-          <div className="bg-white dark:bg-gray-800 shadow-md rounded-full p-2 flex gap-4">
+        <div className="relative bg-white dark:bg-gray-800 shadow-md rounded-full p-2 flex gap-2">
             {[
               { key: "profile", label: "Profile", icon: <User size={20} /> },
               { key: "education", label: "Education", icon: <GraduationCap size={20} /> },
             ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as TabType)}
-                className={`flex items-center gap-2 px-6 py-2 rounded-full text-base font-semibold transition-all duration-300
+             <div className="relative">
+  {activeTab === tab.key && (
+    <motion.div
+      layoutId="activeTab"
+      className="absolute inset-0 bg-blue-600 rounded-full"
+      transition={{
+        type: "spring",
+        stiffness: 400,
+        damping: 35,
+      }}
+    />
+  )}
+
+  <button
+    onClick={() => setActiveTab(tab.key as TabType)}
+                className={`relative z-10 flex items-center gap-2 px-6 py-2 rounded-full text-base font-semibold transition-all duration-300
                   ${
                     activeTab === tab.key
-                      ? "bg-blue-600 text-white shadow-md"
+  ? "text-white"
                       : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                   }`}
               >
                 {tab.icon}
                 {tab.label}
               </button>
+              </div>
             ))}
           </div>
         </div>
+        
 
         {/* CONTENT BOX */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-12">
+          <AnimatePresence mode="wait">
           {/* PROFILE TAB */}
           {activeTab === "profile" && (
-            <div className="animate-fade-in">
-              <div className="flex items-start gap-4 mb-6">
-                <User className="text-blue-600" size={24} />
+  <motion.div
+    key="profile"
+    initial={{
+      opacity: 0,
+      x: 30,
+    }}
+    animate={{
+      opacity: 1,
+      x: 0,
+    }}
+    exit={{
+      opacity: 0,
+      x: -30,
+    }}
+    transition={{
+      duration: 0.35,
+    }}
+  >
+    <motion.div
+  className="flex items-start gap-4 mb-6"
+  initial={{ opacity: 0, y: 30 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{ amount: 0.2 }}
+  transition={{ duration: 0.6 }}
+>
+                <User className="text-blue-600" size={30} />
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                     Introduction
@@ -118,15 +293,18 @@ export function About() {
   </p>
 
   <p>
-    <span
-      className="inline-block px-3 py-1 rounded-md font-bold"
-      style={{
-        backgroundColor: "#fff3cd",
-        color: "#b8860b",
-      }}
-    >
-      GATE ECE 2026 Qualified
-    </span>
+ <motion.span
+  className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-blue-700 bg-blue-100 border border-blue-300 shadow-md"
+  animate={{
+    scale: [1, 1.05, 1],
+  }}
+  transition={{
+    repeat: Infinity,
+    duration: 2.5,
+  }}
+>
+  🎓 GATE ECE 2026 Qualified
+</motion.span>
 
     <br />
     <br />
@@ -148,7 +326,36 @@ export function About() {
 
 
                 </div>
-              </div>
+              </motion.div>
+              <motion.div
+  className="grid grid-cols-2 md:grid-cols-4 gap-6 my-10"
+  initial={{ opacity: 0 }}
+  whileInView={{ opacity: 1 }}
+  viewport={{}}
+>
+  <CounterCard
+    value={50}
+    suffix="+"
+    label="Students Mentored"
+  />
+
+  <CounterCard
+    value={50000}
+    prefix="₹"
+    label="Internship Stipend"
+  />
+
+  <CounterCard
+    value={8.85}
+    label="CGPA"
+  />
+
+  <CounterCard
+    value={10}
+    suffix="+"
+    label="Projects"
+  />
+</motion.div>
 
               {/* Quick Info Grid */}
               <div className="grid md:grid-cols-2 gap-6 mt-8">
@@ -174,33 +381,50 @@ export function About() {
                     desc: "Frontend VLSI, CMOS Design & Embedded Systems",
                   },
                 ].map((info, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-gray-700 rounded-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 hover:shadow-[0_0_25px_#3b82f6] dark:hover:shadow-[0_0_25px_#3b82f6] cursor-pointer"
-
-
-                  >
-                    {info.icon}
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">{info.title}</p>
-                      <p className="font-semibold text-slate-900 dark:text-white">{info.desc}</p>
-                    </div>
-                  </div>
-                ))}
+  <QuickInfoCard
+    key={idx}
+    icon={info.icon}
+    title={info.title}
+    desc={info.desc}
+  />
+))
+                }
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* EDUCATION TAB */}
         {activeTab === "education" && (
-            <div className="animate-fade-in space-y-4">
+  <motion.div
+    key="education"
+   className="animate-fade-in space-y-4"
+   initial={{
+  opacity: 0,
+  y: 30,
+}}
+
+whileInView={{
+  opacity: 1,
+  y: 0,
+}}
+
+viewport={{
+  amount: 0.2,
+  once: true,
+}}
+
+transition={{
+  duration: 0.6,
+  
+}}
+  >
               {[
                 {
                   title: "Guru Ghasidas Vishwavidyalaya, Bilaspur",
                   degree:
                     "Bachelor of Technology — B.Tech, Electronics and Communication Engineering",
-                  period: "Nov 2022 – Apr 2026",
-                  grade: "8.85 CGPA (7th Sem)",
+                  period: "Nov 2022 – May 2026",
+                  grade: "8.91 CGPA ",
                   activities: [
                     "Student Coordinator — Departmental Official Newsletter (The Flip Flops)",
                     "University Runner-Up Basketball (Khelo Bharat GGV)",
@@ -270,9 +494,26 @@ export function About() {
                   ],
                 },
               ].map((edu, idx) => (
-                <div
+        <motion.div
   key={idx}
-  className={`border-l-4 ${edu.borderColor} pl-5 py-3 rounded-r-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 hover:shadow-[0_0_25px_#3b82f6] dark:hover:shadow-[0_0_25px_#3b82f6] cursor-pointer bg-white dark:bg-gray-800`}
+  whileHover={{
+  scale: 1.05,
+  y: -8,
+}}
+  initial={{
+    opacity: 0,
+    y: 40,
+  }}
+  whileInView={{
+    opacity: 1,
+    y: 0,
+  }}
+  viewport={{}}
+  transition={{
+  duration: 0.5,
+  delay: idx * 0.1,
+}}
+  className={`border-l-4 ${edu.borderColor} pl-5 py-3 rounded-r-lg   hover:shadow-[0_0_25px_#3b82f6] dark:hover:shadow-[0_0_25px_#3b82f6] cursor-pointer bg-white dark:bg-gray-800`}
 
 
 >
@@ -298,23 +539,33 @@ export function About() {
   {edu.certificates.length > 0 && (
     <div className="mt-3 flex flex-wrap gap-2">
       {edu.certificates.map((cert, i) => (
-        <button
+       <motion.button
           key={i}
           onClick={() => openCertificate(cert.link)}
+          whileHover={{
+  y: -3,
+  scale: 1.05,
+}}
+
+whileTap={{
+  scale: 0.95,
+}}
          className="px-3 py-1 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-full font-medium cursor-pointer transition-all duration-300 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white"
 
         >
           {cert.label}
-        </button>
+       </motion.button>
       ))}
     </div>
   )}
-</div>
+</motion.div>
 
               ))}
-            </div>
+            </motion.div>
           )}
-        </div>
+        
+       </AnimatePresence>
+       </div>
       </div>
 
       {/* Modal */}

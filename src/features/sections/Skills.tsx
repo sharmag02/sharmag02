@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
+import { motion,  AnimatePresence } from "framer-motion";
 import { supabase } from "../../shared/lib/supabase";
 import * as LucideIcons from "lucide-react";
 import { Laptop, Hammer } from "lucide-react";
@@ -16,7 +17,7 @@ type SkillRow = {
 export default function Skills() {
   const [activeTab, setActiveTab] = useState<"skill" | "tool">("skill");
   const [categories, setCategories] = useState<SkillRow[]>([]);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+
 
   /* ---------------- FETCH ---------------- */
   const fetchCategories = async () => {
@@ -46,118 +47,175 @@ export default function Skills() {
   }, []);
 
   /* ---------------- OBSERVER ---------------- */
-  useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
 
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const el = entry.target as HTMLElement;
-          if (entry.isIntersecting) {
-            el.classList.add("opacity-100", "translate-y-0", "scale-100");
-            el.classList.remove("opacity-0", "translate-y-6", "scale-95");
-          }
-        });
-      },
-      { threshold: 0.12 }
-    );
+     const visibleCategories = categories.filter( (c) => c.category === activeTab );
 
-    observerRef.current = obs;
-
-    const cards = document.querySelectorAll<HTMLElement>(
-      `[data-skill-id^="${activeTab}-"]`
-    );
-    cards.forEach((c) => obs.observe(c));
-
-    return () => obs.disconnect();
-  }, [activeTab, categories]);
-
-  const visibleCategories = categories.filter(
-    (c) => c.category === activeTab
-  );
+  
 
   /* ---------------- UI ---------------- */
   return (
-    <section id="skills" className="relative py-6 px-6 bg-slate-50 dark:bg-gray-900">
+    <section id="skills" className="relative min-h-screen py-6 px-6 bg-slate-50 dark:bg-gray-900">
       <div className="max-w-6xl mx-auto">
+              <motion.div
+  className="text-center mb-12"
+  initial={{ opacity: 0, y: -40 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{amount: 0.3}}
+  transition={{ duration: 0.8 }}
+>
         {/* HEADER */}
-        <div className="text-center mb-12">
+        
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
             Expertise
           </h2>
           <div className="w-32 h-1 mx-auto bg-gradient-to-r from-blue-500 to-teal-500 rounded-full" />
-        </div>
+        
+        </motion.div>
 
         {/* ================= MOBILE TABS (FIXED) ================= */}
-        <div className="flex justify-center mb-6 lg:hidden border-b border-gray-200 dark:border-gray-700">
-          {[
-            { id: "skill", label: "Skills", icon: Laptop },
-            { id: "tool", label: "Tools", icon: Hammer },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`relative flex items-center gap-2 px-4 py-2 font-semibold transition-all
-                ${
-                  activeTab === tab.id
-                    ? "text-blue-600 dark:text-blue-400 after:absolute after:left-0 after:bottom-0 after:w-full after:h-1 after:bg-gradient-to-r after:from-blue-500 after:to-pink-500"
-                    : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-300"
-                }`}
-            >
-              <tab.icon size={18} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+       <div className="flex justify-center mb-6 lg:hidden border-b border-gray-200 dark:border-gray-700">
+  {[
+    { id: "skill", label: "Skills", icon: Laptop },
+    { id: "tool", label: "Tools", icon: Hammer },
+  ].map((tab) => (
+    <button
+      key={tab.id}
+      onClick={() => setActiveTab(tab.id as any)}
+      className={`relative flex items-center gap-2 px-4 py-2 text-base font-semibold transition-colors duration-300 ${
+        activeTab === tab.id
+          ? "text-blue-600 dark:text-blue-400"
+          : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-300"
+      }`}
+    >
+      {activeTab === tab.id && (
+        <motion.div
+          layoutId="skillsMobileTabIndicator"
+          className="absolute bottom-0 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-blue-500 to-pink-500"
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 35,
+          }}
+        />
+      )}
+
+      <span className="relative z-10 flex items-center gap-2">
+        <tab.icon size={18} />
+        {tab.label}
+      </span>
+    </button>
+  ))}
+</div>
 
         {/* ================= DESKTOP TABS ================= */}
         <div className="hidden lg:flex justify-center mb-10">
-          <div className="bg-white dark:bg-gray-800 shadow-md rounded-full p-2 flex gap-4">
-            {[
-              { id: "skill", label: "Skills", icon: Laptop },
-              { id: "tool", label: "Tools", icon: Hammer },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-6 py-2 flex items-center gap-2 rounded-full font-semibold transition-all
-                  ${
-                    activeTab === tab.id
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                  }`}
-              >
-                <tab.icon size={20} />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+  <div className="relative bg-white dark:bg-gray-800 shadow-md rounded-full p-2 flex gap-2">
+    {[
+      { id: "skill", label: "Skills", icon: Laptop },
+      { id: "tool", label: "Tools", icon: Hammer },
+    ].map((tab) => (
+      <div key={tab.id} className="relative">
+        {activeTab === tab.id && (
+          <motion.div
+            layoutId="skillsDesktopTab"
+            className="absolute inset-0 bg-blue-600 rounded-full"
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 35,
+            }}
+          />
+        )}
+
+        <button
+          onClick={() => setActiveTab(tab.id as any)}
+          className={`relative z-10 flex items-center gap-2 px-6 py-2 rounded-full text-base font-semibold transition-all duration-300 ${
+            activeTab === tab.id
+              ? "text-white"
+              : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          <tab.icon size={20} />
+          {tab.label}
+        </button>
+      </div>
+    ))}
+  </div>
+</div>
 
         {/* ================= CARDS ================= */}
-        <div className="grid md:grid-cols-2 gap-10">
+        <AnimatePresence mode="wait">
+  <motion.div
+    key={activeTab}
+    className="grid md:grid-cols-2 gap-10"
+    initial={{
+      opacity: 0,
+      // y: 20,
+    }}
+    animate={{
+      opacity: 1,
+      y: 0,
+    }}
+    exit={{
+      opacity: 0,
+      y: -20,
+    }}
+    transition={{
+      duration: 0.35,
+    }}
+  >
           {visibleCategories.map((cat, idx) => {
             const Icon =
               (LucideIcons as any)[cat.icon || "Code"] || LucideIcons.Code;
 
             return (
-              <div
-                key={cat.id}
-                data-skill-id={`${activeTab}-${idx}`}
-                className="group relative p-1 rounded-2xl transition-all duration-300
-                  opacity-0 translate-y-6 scale-95
-                  hover:shadow-[0_0_25px_#3b82f6]
-                  dark:hover:shadow-[0_0_25px_#3b82f6]"
+              <motion.div
+  key={cat.id}
+  data-skill-id={`${activeTab}-${idx}`}
+ initial={{
+  opacity: 0,
+  y: 20,
+}}
+
+animate={{
+  opacity: 1,
+  y: 0,
+}}
+  transition={{
+    duration: 0.7,
+    delay: idx * 0.1,
+    ease: "easeOut",
+  }}
+  whileHover={{
+    y: -8,
+  }}
+                className="group 
+                  "
               >
                 <div
-                  className="rounded-2xl p-6 transition-all duration-500 transform
-                    group-hover:scale-105 bg-white dark:bg-gray-800"
-                  style={{ minHeight: "180px" }}
-                >
+  className="
+    rounded-2xl
+    p-6
+    bg-white
+    dark:bg-gray-800
+    shadow-md
+    transition-all
+    duration-500
+    group-hover:scale-[1.03]
+    group-hover:shadow-[0_0_30px_#3b82f6]
+  "
+  style={{ minHeight: "180px" }}
+>
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="p-3 bg-blue-600 rounded-lg group-hover:scale-110 transition-transform">
+                    <motion.div
+  whileHover={{
+    rotate: 5,
+    scale: 1.1,
+  }}
+  className="p-3 bg-blue-600 rounded-lg"
+>
                       <Icon className="text-white" size={26} />
-                    </div>
+                    </motion.div>
                     <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
                       {cat.title}
                     </h3>
@@ -165,8 +223,15 @@ export default function Skills() {
 
                   <div className="flex flex-wrap gap-2">
                     {cat.items.map((skill, sIdx) => (
-                      <span
+                      <motion.span
                         key={sIdx}
+                          whileHover={{
+    scale: 1.08,
+    y: -2,
+  }}
+  whileTap={{
+    scale: 0.95,
+  }}
                         className="px-3 py-1 text-sm bg-white dark:bg-gray-700
                           border border-gray-300 dark:border-gray-600
                           rounded-full text-gray-800 dark:text-gray-200
@@ -175,14 +240,15 @@ export default function Skills() {
                           transition-all duration-300 hover:scale-105 cursor-pointer"
                       >
                         {skill}
-                      </span>
+                      </motion.span>
                     ))}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
+        </AnimatePresence>
       </div>
       {/* ✅ AUTO NEXT PAGE ARROW */}
 <NextPageArrow />

@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect,useRef, useState } from "react";
+import { motion,  AnimatePresence } from "framer-motion";
 import { Award, Wrench, ExternalLink } from "lucide-react";
 import { supabase } from "../../shared/lib/supabase";
 import { NextPageArrow } from "../../shared/components/NextPageArrow";
@@ -115,9 +116,17 @@ export function Certifications() {
   return (
     <section
       id="certifications"
-      className="relative py-6 px-4 md:px-6 bg-slate-50 dark:bg-gray-900"
+      className="relative min-h-screen py-6 px-6 bg-slate-50 dark:bg-gray-900"
     >
       <div className="max-w-7xl mx-auto">
+             <motion.div
+  className="text-center mb-12"
+  initial={{ opacity: 0, y: -40 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{amount: 0.3}}
+  transition={{ duration: 0.8 }}
+>
+
         {/* HEADER */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
@@ -125,6 +134,8 @@ export function Certifications() {
           </h2>
           <div className="w-24 h-[3px] bg-gradient-to-r from-blue-500 to-teal-500 mx-auto rounded-full" />
         </div>
+        </motion.div>
+
 
         {/* ================= MOBILE TABS ================= */}
         <div className="flex justify-center mb-6 lg:hidden border-b border-gray-200 dark:border-gray-700">

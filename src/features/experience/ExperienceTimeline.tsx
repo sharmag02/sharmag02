@@ -2,6 +2,7 @@
 
 import { Briefcase, Star, Zap, PenTool } from "lucide-react";
 import { Experience } from "../experience/ExperienceAdminHelpers";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 
 interface Props {
   company: string;
@@ -9,6 +10,28 @@ interface Props {
   uniqueId?: string;
 }
 
+function formatMonthYear(date: string | null) {
+  if (!date || date === "Present") return "Present";
+
+  const [year, month] = date.split("-");
+
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  return `${monthNames[Number(month) - 1]} ${year}`;
+}
 export default function ExperienceTimeline({
   company,
   roles,
@@ -25,18 +48,42 @@ export default function ExperienceTimeline({
   const end = sorted[0]?.end_date;
 
   return (
+    <motion.div
+  data-card-id={uniqueId}
+  initial={{
+    opacity: 0,
+    y: 50,
+  }}
+  whileInView={{
+    opacity: 1,
+    y: 0,
+  }}
+   whileHover={{
+    scale: 1.02,
+    y: -8,
+  }}
+  viewport={{
+    amount: 0.15,
+    once: false,
+  }}
+  transition={{
+    duration: 0.5,
+    ease: "easeOut",
+  }}
+  className="group relative p-1 rounded-2xl"
+>
     <div
-      data-card-id={uniqueId}
-      className="
-        relative p-1 rounded-2xl
-        transition-all duration-500 ease-out
-        opacity-0 translate-y-6 scale-95
-        hover:scale-[1.03]
-        hover:shadow-[0_0_30px_#3b82f6]
-        bg-white dark:bg-gray-800
-      "
-    >
-      <div className="rounded-2xl p-6 bg-white dark:bg-gray-800 shadow-md">
+  className="
+    rounded-2xl
+    p-6
+    bg-white
+    dark:bg-gray-800
+    shadow-md
+    transition-all
+    duration-300
+    group-hover:shadow-[0_0_30px_#3b82f6]
+  "
+>
         {/* ================= COMPANY HEADER ================= */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
@@ -45,9 +92,21 @@ export default function ExperienceTimeline({
               {company}
             </h3>
           </div>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {start} – {end}
-          </span>
+       <span
+  className="
+    px-3 py-1
+    rounded-full
+    text-xs
+    font-semibold
+    bg-blue-500/10
+    text-blue-500
+    dark:text-blue-400
+    border border-blue-500/20
+    whitespace-nowrap
+  "
+>
+  {formatMonthYear(start)} – {formatMonthYear(end)}
+</span>
         </div>
 
         {/* ================= TIMELINE ================= */}
@@ -57,7 +116,22 @@ export default function ExperienceTimeline({
 
           <div className="space-y-10">
             {sorted.map((role, index) => (
-              <div key={index} className="relative flex">
+              <motion.div
+  key={index}
+  className="relative flex"
+  initial={{
+    opacity: 0,
+    y: 20,
+  }}
+  whileInView={{
+    opacity: 1,
+    y: 0,
+  }}
+  transition={{
+    delay: index * 0.15,
+    duration: 0.4,
+  }}
+>
                 {/* ===== TIMELINE COLUMN ===== */}
                 <div className="relative w-10 flex justify-center">
                   {/* ICON LOCKED TO LINE */}
@@ -85,9 +159,23 @@ export default function ExperienceTimeline({
                     {role.title}
                   </h4>
 
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    {role.start_date} – {role.end_date}
-                  </p>
+                <div className="mb-3">
+  <span
+    className="
+      inline-block
+      px-3 py-1
+      rounded-full
+      text-xs
+      font-semibold
+      bg-blue-500/10
+      text-blue-500
+      dark:text-blue-400
+      border border-blue-500/20
+    "
+  >
+    {formatMonthYear(role.start_date)} – {formatMonthYear(role.end_date)}
+  </span>
+</div>
 
                   {role.description && (
                     <p className="text-gray-700 dark:text-gray-300 text-sm mb-3">
@@ -127,8 +215,15 @@ export default function ExperienceTimeline({
                       </h5>
                       <div className="flex flex-wrap gap-2">
                         {role.technologies.map((t, i) => (
-                          <span
-                            key={i}
+                          <motion.span
+  key={i}
+  whileHover={{
+    scale: 1.08,
+    y: -2,
+  }}
+  whileTap={{
+    scale: 0.95,
+  }}
                             className="
                               px-3 py-1 rounded-full text-sm font-medium
                               bg-gray-100 dark:bg-gray-700
@@ -143,18 +238,18 @@ export default function ExperienceTimeline({
                             "
                           >
                             {t}
-                          </span>
+                          </motion.span>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
         {/* ================= END TIMELINE ================= */}
       </div>
-    </div>
+    </motion.div>
   );
 }

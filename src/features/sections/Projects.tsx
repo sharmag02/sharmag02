@@ -1,6 +1,7 @@
 // src/features/projects/Projects.tsx
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { motion,  AnimatePresence } from "framer-motion";
 import { Github, ExternalLink, Cpu, Globe } from "lucide-react";
 import { supabase } from "../../shared/lib/supabase";
 import { NextPageArrow } from "../../shared/components/NextPageArrow";
@@ -36,7 +37,7 @@ export function Projects() {
   const [activeTab, setActiveTab] = useState<TabType>("core");
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  
 
   const tabs = [
     { key: "core", label: "Core / Electronics", icon: <Cpu size={18} /> },
@@ -66,41 +67,34 @@ export function Projects() {
     fetchProjects();
   }, []);
 
-  /* ================= INTERSECTION OBSERVER ================= */
-  useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const el = entry.target as HTMLElement;
-          if (entry.isIntersecting) {
-            el.classList.add("opacity-100", "translate-y-0", "scale-100");
-            el.classList.remove("opacity-0", "translate-y-6", "scale-95");
-          }
-        });
-      },
-      { threshold: 0.12 }
-    );
-
-    observerRef.current = observer;
-
-    const selector = `[data-proj-id^="${activeTab}-"]`;
-    document
-      .querySelectorAll<HTMLElement>(selector)
-      .forEach((el) => observer.observe(el));
-
-    return () => observer.disconnect();
-  }, [activeTab, projects]);
-
+ 
+ 
   /* ================= CARD ================= */
   const renderCard = (proj: ProjectItem, uniqueId: string) => (
-    <div
-      data-proj-id={uniqueId}
-      key={uniqueId}
-      className={`group relative p-1 rounded-2xl transition-all duration-300
-        opacity-0 translate-y-6 scale-95 ${proj.glow ?? ""}`}
-    >
+   <motion.div
+  key={uniqueId}
+  data-proj-id={uniqueId}
+  initial={{
+    opacity: 0,
+    // y: 50,
+  }}
+  whileInView={{
+    opacity: 1,
+    y: 0,
+  }}
+  viewport={{
+    amount: 0.15,
+    once: false,
+  }}
+  transition={{
+    duration: 0.7,
+    ease: "easeOut",
+  }}
+  whileHover={{
+    y: -8,
+  }}
+  className={`group relative p-1 rounded-2xl ${proj.glow ?? ""}`}
+>
       <div
         className={`
           ${proj.bg ?? ""}
@@ -137,8 +131,16 @@ export function Projects() {
         {proj.tags && (
           <div className="flex flex-wrap gap-2 mb-4">
             {proj.tags.map((tag, idx) => (
-              <span
+              <motion.span
                 key={idx}
+                whileHover={{
+  scale: 1.08,
+  y: -2,
+}}
+
+whileTap={{
+  scale: 0.95,
+}}
                 className="
                   px-3 py-1 text-sm rounded-full font-medium cursor-pointer
                   bg-white dark:bg-gray-700
@@ -150,7 +152,7 @@ export function Projects() {
                 "
               >
                 {tag}
-              </span>
+              </motion.span>
             ))}
           </div>
         )}
@@ -172,7 +174,15 @@ export function Projects() {
           )}
 
           {proj.live && (
-            <a
+            <motion.a
+            whileHover={{
+  scale: 1.05,
+  y: -2,
+}}
+
+whileTap={{
+  scale: 0.95,
+}}
               href={proj.live}
               target="_blank"
               className="
@@ -182,11 +192,11 @@ export function Projects() {
               "
             >
               <ExternalLink size={18} /> Live
-            </a>
+            </motion.a>
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 
   /* ================= FILTERED PROJECTS (FIXED) ================= */
@@ -201,6 +211,13 @@ export function Projects() {
       className="relative min-h-screen py-6 px-6 bg-slate-50 dark:bg-gray-900"
     >
       <div className="max-w-5xl mx-auto">
+        <motion.div
+  className="text-center mb-12"
+  initial={{ opacity: 0, y: -40 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{amount: 0.3}}
+  transition={{ duration: 0.8 }}
+>
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
@@ -208,44 +225,73 @@ export function Projects() {
           </h2>
           <div className="w-24 h-1 mx-auto bg-gradient-to-r from-blue-500 to-teal-500 rounded-full" />
         </div>
+        </motion.div>
 
-        {/* MOBILE TABS */}
-        <div className="flex justify-center mb-4 lg:hidden border-b border-gray-200 dark:border-gray-700">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as TabType)}
-              className={`relative flex items-center gap-1 px-4 py-2 font-semibold transition-all ${
-                activeTab === tab.key
-                  ? "text-blue-600 dark:text-blue-400 after:absolute after:left-0 after:bottom-0 after:w-full after:h-1 after:bg-gradient-to-r after:from-blue-500 after:to-pink-500"
-                  : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-300"
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
+  
+       {/* ================= MOBILE TABS ================= */}
+<div className="flex justify-center mb-4 lg:hidden border-b border-gray-200 dark:border-gray-700">
+  {tabs.map((tab) => (
+    <button
+      key={tab.key}
+      onClick={() => setActiveTab(tab.key as TabType)}
+      className={`relative flex items-center gap-1 px-4 py-2 text-base font-semibold transition-colors duration-300 ${
+        activeTab === tab.key
+          ? "text-blue-600 dark:text-blue-400"
+          : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-300"
+      }`}
+    >
+      {activeTab === tab.key && (
+        <motion.div
+          layoutId="projectsMobileTabIndicator"
+          className="absolute bottom-0 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-blue-500 to-pink-500"
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 35,
+          }}
+        />
+      )}
 
-        {/* DESKTOP TABS */}
-        <div className="hidden lg:flex justify-center mb-6">
-          <div className="bg-white dark:bg-gray-800 shadow-md rounded-full p-2 flex gap-4">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as TabType)}
-                className={`flex items-center gap-2 px-6 py-2 rounded-full font-semibold transition-all ${
-                  activeTab === tab.key
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      <span className="relative z-10 flex items-center gap-1">
+        {tab.icon}
+        {tab.label}
+      </span>
+    </button>
+  ))}
+</div>
+
+        {/* ================= DESKTOP TABS ================= */}
+<div className="hidden lg:flex justify-center mb-6">
+  <div className="relative bg-white dark:bg-gray-800 shadow-md rounded-full p-2 flex gap-2">
+    {tabs.map((tab) => (
+      <div key={tab.key} className="relative">
+        {activeTab === tab.key && (
+          <motion.div
+            layoutId="projectsDesktopTab"
+            className="absolute inset-0 bg-blue-600 rounded-full"
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 35,
+            }}
+          />
+        )}
+
+        <button
+          onClick={() => setActiveTab(tab.key as TabType)}
+          className={`relative z-10 flex items-center gap-2 px-6 py-2 rounded-full text-base font-semibold transition-all duration-300 ${
+            activeTab === tab.key
+              ? "text-white"
+              : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          {tab.icon}
+          {tab.label}
+        </button>
+      </div>
+    ))}
+  </div>
+</div>
 
         {/* Grid */}
         {loading ? (
@@ -253,11 +299,31 @@ export function Projects() {
             Loading projects...
           </p>
         ) : (
-          <div className="grid md:grid-cols-2 gap-10">
-            {filteredProjects.map((proj, idx) =>
-              renderCard(proj, `${activeTab}-${idx}`)
-            )}
-          </div>
+          <AnimatePresence mode="wait">
+  <motion.div
+    key={activeTab}
+    initial={{
+      opacity: 0,
+      y: 20,
+    }}
+    animate={{
+      opacity: 1,
+      y: 0,
+    }}
+    exit={{
+      opacity: 0,
+      y: -20,
+    }}
+    transition={{
+      duration: 0.35,
+    }}
+    className="grid md:grid-cols-2 gap-10"
+  >
+    {filteredProjects.map((proj, idx) =>
+      renderCard(proj, `${activeTab}-${idx}`)
+    )}
+  </motion.div>
+</AnimatePresence>
         )}
       </div>
       {/* ✅ AUTO NEXT PAGE ARROW */}

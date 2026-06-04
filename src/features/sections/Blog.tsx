@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion,  AnimatePresence } from "framer-motion";
 import { supabase } from "../../shared/lib/supabase";
 import { Blog as BlogType } from "../../shared/types/database";
 import { Link } from "react-router-dom";
@@ -46,6 +47,13 @@ export function Blog() {
       className="py-16 px-6 bg-slate-50 dark:bg-gray-900 overflow-hidden"
     >
       <div className="max-w-6xl mx-auto">
+             <motion.div
+  className="text-center mb-12"
+  initial={{ opacity: 0, y: -40 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{amount: 0.3}}
+  transition={{ duration: 0.8 }}
+>
         {/* HEADER */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
@@ -53,6 +61,7 @@ export function Blog() {
           </h2>
           <div className="w-32 h-1 mx-auto bg-gradient-to-r from-blue-500 to-teal-500 rounded-full"></div>
         </div>
+        </motion.div>
 
         {/* LOADING */}
         {loading ? (
