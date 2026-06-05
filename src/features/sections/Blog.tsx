@@ -41,6 +41,33 @@ export function Blog() {
     fetchBlogs();
   }, []);
 
+  if (loading) {
+  return (
+    <section
+      id="blog"
+      className="
+        py-16
+        px-6
+        bg-slate-50
+        dark:bg-gray-900
+        overflow-hidden
+      "
+    >
+      <div className="max-w-6xl mx-auto">
+        {/* Header Space */}
+        <div className="h-[120px]" />
+
+        {/* Blog Cards Space */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="h-[250px]" />
+          <div className="h-[250px]" />
+          <div className="h-[250px]" />
+          <div className="h-[250px]" />
+        </div>
+      </div>
+    </section>
+  );
+}
   return (
     <section
       id="blog"
@@ -64,11 +91,7 @@ export function Blog() {
         </motion.div>
 
         {/* LOADING */}
-        {loading ? (
-          <div className="flex justify-center items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : blogs.length === 0 ? (
+       { blogs.length === 0 ? (
           <p className="text-center text-gray-600 dark:text-gray-300">
             No blogs found.
           </p>
@@ -76,10 +99,43 @@ export function Blog() {
           <>
             {/* BLOG CARDS */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {blogs.map((blog) => (
-                <div
-                  key={blog.id}
-                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 flex flex-col hover:shadow-xl transition-shadow duration-300"
+              {blogs.map((blog, index) => (
+  <motion.div
+    key={blog.id}
+    initial={{
+      opacity: 0,
+      y: 30,
+    }}
+    whileInView={{
+      opacity: 1,
+      y: 0,
+    }}
+    viewport={{
+      amount: 0.35,
+      once: false,
+    }}
+    transition={{
+      duration: 0.7,
+      delay: index * 0.08,
+      ease: "easeOut",
+    }}
+    whileHover={{
+      y: -4,
+    }}
+                className="
+group
+bg-white
+dark:bg-gray-800
+rounded-2xl
+shadow-md
+p-6
+flex
+flex-col
+transition-all
+duration-500
+group-hover:scale-[1.03]
+group-hover:shadow-[0_0_25px_#3b82f6]
+"
                 >
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 line-clamp-2">
                     {blog.title}
@@ -89,27 +145,37 @@ export function Blog() {
                     {blog.excerpt || "Read more to explore this article."}
                   </p>
 
-                  <div className="mt-auto">
+                  <motion.div
+  className="mt-auto"
+  whileHover={{
+    x: 4,
+  }}
+>
                     <Link
                       to={`/blog/${blog.slug}`}
                       className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
                     >
                       Read article →
                     </Link>
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
               ))}
             </div>
 
             {/* VIEW ALL */}
-            <div className="text-center mt-12">
+            <motion.div
+  className="text-center mt-12"
+  whileHover={{
+    y: -2,
+  }}
+>
               <Link
                 to="/blogs"
                 className="inline-block px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
               >
                 View all blogs →
               </Link>
-            </div>
+            </motion.div>
           </>
         )}
       </div>

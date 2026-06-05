@@ -74,25 +74,29 @@ export function Projects() {
    <motion.div
   key={uniqueId}
   data-proj-id={uniqueId}
-  initial={{
-    opacity: 0,
-    // y: 50,
-  }}
-  whileInView={{
-    opacity: 1,
-    y: 0,
-  }}
-  viewport={{
-    amount: 0.15,
-    once: false,
-  }}
-  transition={{
-    duration: 0.7,
-    ease: "easeOut",
-  }}
+//   initial={{
+//   opacity: 0,
+//   y: 50,
+// }}
+
+// whileInView={{
+//   opacity: 1,
+//   y: 0,
+// }}
+
+// viewport={{
+//   amount: 0.15,
+//   once: false,
+// }}
+
+transition={{
+  duration: 0.7,
+  ease: "easeOut",
+}}
   whileHover={{
-    y: -8,
+    y: -4,
   }}
+ 
   className={`group relative p-1 rounded-2xl ${proj.glow ?? ""}`}
 >
       <div
@@ -199,16 +203,67 @@ whileTap={{
     </motion.div>
   );
 
-  /* ================= FILTERED PROJECTS (FIXED) ================= */
-  const filteredProjects = projects.filter(
-    (p) => normalizeType(p.category) === activeTab
-  );
+  
+const chunkProjects = (items: ProjectItem[], size = 2) => {
+  const rows: ProjectItem[][] = [];
 
+  for (let i = 0; i < items.length; i += size) {
+    rows.push(items.slice(i, i + size));
+  }
+
+  return rows;
+};
+const coreRows = chunkProjects(
+  projects.filter(
+    (p) => normalizeType(p.category) === "core"
+  )
+);
+
+const webRows = chunkProjects(
+  projects.filter(
+    (p) => normalizeType(p.category) === "web"
+  )
+);
+if (loading) {
+  return (
+    <section
+      id="projects"
+      className="
+        relative
+        min-h-screen
+        overflow-hidden
+        py-6
+        px-6
+        bg-slate-50
+        dark:bg-gray-900
+      "
+    >
+      <div className="max-w-5xl mx-auto">
+        {/* Header Space */}
+        <div className="h-[120px]" />
+
+        {/* Project Cards Placeholder */}
+        <div className="grid md:grid-cols-2 gap-10">
+          <div className="h-[320px]" />
+          <div className="h-[320px]" />
+          <div className="h-[320px]" />
+          <div className="h-[320px]" />
+        </div>
+      </div>
+    </section>
+  );
+}
   /* ================= UI ================= */
   return (
     <section
       id="projects"
-      className="relative min-h-screen py-6 px-6 bg-slate-50 dark:bg-gray-900"
+      className="relative
+    min-h-screen
+    overflow-hidden
+    py-6
+    px-6
+    bg-slate-50
+    dark:bg-gray-900"
     >
       <div className="max-w-5xl mx-auto">
         <motion.div
@@ -294,37 +349,157 @@ whileTap={{
 </div>
 
         {/* Grid */}
-        {loading ? (
-          <p className="text-center text-gray-600 dark:text-gray-300 py-10">
-            Loading projects...
-          </p>
-        ) : (
+        
           <AnimatePresence mode="wait">
+
+ {/* CORE PROJECTS */}
+{activeTab === "core" && (
   <motion.div
-    key={activeTab}
+    key="core"
+    className="flex flex-col gap-10"
     initial={{
       opacity: 0,
-      y: 20,
+      x: 30,
     }}
     animate={{
       opacity: 1,
-      y: 0,
+      x: 0,
     }}
     exit={{
       opacity: 0,
-      y: -20,
+      x: -30,
     }}
     transition={{
       duration: 0.35,
     }}
-    className="grid md:grid-cols-2 gap-10"
   >
-    {filteredProjects.map((proj, idx) =>
-      renderCard(proj, `${activeTab}-${idx}`)
-    )}
-  </motion.div>
-</AnimatePresence>
+    {/* MOBILE */}
+<div className="md:hidden flex flex-col gap-10">
+  {projects
+    .filter((p) => normalizeType(p.category) === "core")
+    .map((proj, idx) => (
+      <motion.div
+        key={`core-mobile-${idx}`}
+        initial={{
+          opacity: 0,
+          y: 50,
+        }}
+        whileInView={{
+          opacity: 1,
+          y: 0,
+        }}
+        viewport={{
+          amount: 0.15,
+          once: false,
+        }}
+        transition={{
+          duration: 0.7,
+          ease: "easeOut",
+        }}
+      >
+        {renderCard(
+          proj,
+          `core-mobile-${idx}`
         )}
+      </motion.div>
+    ))}
+</div>
+
+{/* DESKTOP */}
+<div className="hidden md:flex flex-col gap-10">
+  {coreRows.map((row, rowIndex) => (
+    <motion.div
+      key={`core-row-${rowIndex}`}
+      className="grid md:grid-cols-2 gap-10"
+      initial={{
+        opacity: 0,
+        y: 50,
+      }}
+      whileInView={{
+        opacity: 1,
+        y: 0,
+      }}
+      viewport={{
+        amount: 0.15,
+        once: false,
+      }}
+      transition={{
+        duration: 0.7,
+        ease: "easeOut",
+      }}
+    >
+      {row.map((proj, idx) =>
+        renderCard(
+          proj,
+          `core-${rowIndex}-${idx}`
+        )
+      )}
+    </motion.div>
+  ))}
+</div>
+  </motion.div>
+)}
+
+{/* WEB PROJECTS */}
+{activeTab === "web" && (
+  <motion.div
+    key="web"
+    className="flex flex-col gap-10"
+    initial={{
+      opacity: 0,
+      x: 30,
+    }}
+    animate={{
+      opacity: 1,
+      x: 0,
+    }}
+    exit={{
+      opacity: 0,
+      x: -30,
+    }}
+    transition={{
+      duration: 0.35,
+    }}
+  >
+    {webRows.map((row, rowIndex) => (
+      <motion.div
+        key={`web-row-${rowIndex}`}
+       className="
+  grid
+  grid-cols-1
+  md:grid-cols-2
+  gap-10
+"
+        initial={{
+          opacity: 0,
+          y: 50,
+        }}
+        whileInView={{
+          opacity: 1,
+          y: 0,
+        }}
+        viewport={{
+          amount: 0.15,
+          once: false,
+        }}
+        transition={{
+          duration: 0.7,
+          ease: "easeOut",
+        }}
+      >
+        {row.map((proj, idx) =>
+          renderCard(
+            proj,
+            `web-${rowIndex}-${idx}`
+          )
+        )}
+      </motion.div>
+    ))}
+  </motion.div>
+)}
+
+</AnimatePresence>
+        
       </div>
       {/* ✅ AUTO NEXT PAGE ARROW */}
 <NextPageArrow />

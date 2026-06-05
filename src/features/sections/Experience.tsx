@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { useEffect,  useState } from "react";
+import { motion,  AnimatePresence } from "framer-motion";
 import { Briefcase, Star } from "lucide-react";
 import {
   fetchAllExperiences,
@@ -29,12 +29,22 @@ const tabs = [
 export default function ExperienceSection() {
   const [activeTab, setActiveTab] = useState<TabType>("industry");
   const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [loading, setLoading] = useState(true);
   
 
   /* ---------------- FETCH DATA ---------------- */
-  useEffect(() => {
-    fetchAllExperiences().then(setExperiences);
-  }, []);
+ useEffect(() => {
+  const load = async () => {
+    setLoading(true);
+
+    const data = await fetchAllExperiences();
+
+    setExperiences(data);
+    setLoading(false);
+  };
+
+  load();
+}, []);
 
 
  
@@ -59,11 +69,41 @@ export default function ExperienceSection() {
   const groupedIndustry = groupByCompany(industryExperience);
   const groupedClubs = groupByCompany(clubsExperience);
 
+if (loading) {
   return (
     <section
       id="experience"
-      className="relative min-h-screen py-6 px-6 bg-slate-50 dark:bg-gray-900"
+      className="
+        relative
+        min-h-screen
+        overflow-hidden
+        py-6
+        px-6
+        bg-slate-50
+        dark:bg-gray-900
+      "
     >
+      <div className="max-w-5xl mx-auto">
+        <div className="h-[600px]" />
+      </div>
+    </section>
+  );
+}
+
+  return (
+    <section
+        id="experience"
+  className="
+    relative
+    min-h-screen
+    overflow-hidden
+    py-6
+    px-6
+    bg-slate-50
+    dark:bg-gray-900
+  "
+>
+    
       <div className="max-w-5xl mx-auto">
         <motion.div
           className="text-center mb-12"
@@ -99,8 +139,8 @@ export default function ExperienceSection() {
           className="absolute bottom-0 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-blue-500 to-pink-500"
           transition={{
             type: "spring",
-            stiffness: 400,
-            damping: 35,
+            stiffness: 350,
+            damping: 30,
           }}
         />
       )}
@@ -124,8 +164,8 @@ export default function ExperienceSection() {
             className="absolute inset-0 bg-blue-600 rounded-full"
             transition={{
               type: "spring",
-              stiffness: 400,
-              damping: 35,
+              stiffness: 350,
+              damping: 30,
             }}
           />
         )}
@@ -150,47 +190,75 @@ export default function ExperienceSection() {
 </div>
 
         {/* ================= CARDS ================= */}
-       <AnimatePresence mode="wait">
-  <motion.div
-    key={activeTab}
-    className="flex flex-col gap-8"
-    initial={{
-      opacity: 0,
-      y: 20,
-    }}
-    animate={{
-      opacity: 1,
-      y: 0,
-    }}
-    exit={{
-      opacity: 0,
-      y: -20,
-    }}
-    transition={{
-      duration: 0.35,
-    }}
-  >
-    {activeTab === "industry" &&
-      Object.entries(groupedIndustry).map(([company, roles], i) =>
-        roles.length > 1 ? (
-          <ExperienceTimeline
-            key={`industry-${i}`}
-            company={company}
-            roles={roles}
-            uniqueId={`industry-${i}`}
-          />
-        ) : (
-          <SingleExperienceCard
-            key={`industry-${i}`}
-            company={company}
-            role={roles[0]}
-            uniqueId={`industry-${i}`}
-          />
-        )
-      )}
+      <AnimatePresence mode="wait">
 
-    {activeTab === "club" &&
-      Object.entries(groupedClubs).map(([company, roles], i) =>
+  {/* INDUSTRY TAB */}
+  {activeTab === "industry" && (
+    <motion.div
+      key="industry"
+      className="flex flex-col gap-8"
+     initial={{
+  opacity: 0,
+  x: 30,
+}}
+
+animate={{
+  opacity: 1,
+  x: 0,
+}}
+
+exit={{
+  opacity: 0,
+  x: -30,
+}}
+      transition={{
+        duration: 0.35,
+      }}
+    >
+      {Object.entries(groupedIndustry).map(([company, roles], i) =>
+        roles.length > 1 ? (
+          <ExperienceTimeline
+            key={`industry-${i}`}
+            company={company}
+            roles={roles}
+            uniqueId={`industry-${i}`}
+          />
+        ) : (
+          <SingleExperienceCard
+            key={`industry-${i}`}
+            company={company}
+            role={roles[0]}
+            uniqueId={`industry-${i}`}
+          />
+        )
+      )}
+    </motion.div>
+  )}
+
+  {/* CLUB TAB */}
+  {activeTab === "club" && (
+    <motion.div
+      key="club"
+      className="flex flex-col gap-8"
+      initial={{
+  opacity: 0,
+  x: 30,
+}}
+
+animate={{
+  opacity: 1,
+  x: 0,
+}}
+
+exit={{
+  opacity: 0,
+  x: -30,
+}}
+      transition={{
+        duration: 0.35,
+      }}
+    >
+      {Object.entries(groupedClubs).map(([company, roles], i) =>
         roles.length > 1 ? (
           <ExperienceTimeline
             key={`club-${i}`}
@@ -207,7 +275,9 @@ export default function ExperienceSection() {
           />
         )
       )}
-  </motion.div>
+    </motion.div>
+  )}
+
 </AnimatePresence>
       </div>
       {/* ✅ AUTO NEXT PAGE ARROW */}
@@ -255,7 +325,7 @@ function SingleExperienceCard({ company, role, uniqueId }: SingleProps) {
   data-card-id={uniqueId}
 initial={{
   opacity: 0,
-  y: 50,
+  y: 30,
 }}
 
 whileInView={{
@@ -264,8 +334,9 @@ whileInView={{
 }}
 
 viewport={{
-  amount: 0.15,
-  once:false,
+  amount: 0.35,
+  once: false,
+  
 }}
 
 transition={{
@@ -276,18 +347,21 @@ transition={{
       className="group relative p-1 rounded-2xl"
     >
       <div className="rounded-2xl p-6 bg-white dark:bg-gray-800 transition-all duration-500 shadow-md group-hover:scale-[1.03] group-hover:shadow-[0_0_30px_#3b82f6]">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-2">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
           <div className="flex items-center gap-3">
             <Briefcase className="text-blue-600" size={22} />
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
               {company}
             </h3>
           </div>
-        <span
+    <span
   className="
-    px-3 py-1
+    inline-flex
+    w-fit
+    self-start
+    px-2.5 py-1
     rounded-full
-    text-xs
+    text-[11px]
     font-semibold
     bg-blue-500/10
     text-blue-500

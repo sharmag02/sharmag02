@@ -21,7 +21,7 @@ export function Certifications() {
   const [activeTab, setActiveTab] = useState<TabType>("combined");
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [loading, setLoading] = useState(true);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+ 
 
   const tabs = [
     {
@@ -58,30 +58,7 @@ export function Certifications() {
     fetchCertifications();
   }, []);
 
-  /* ---------------- INTERSECTION OBSERVER ---------------- */
-  useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const el = entry.target as HTMLElement;
-          if (entry.isIntersecting) {
-            el.classList.add("opacity-100", "translate-y-0", "scale-100");
-            el.classList.remove("opacity-0", "translate-y-6", "scale-95");
-          }
-        });
-      },
-      { threshold: 0.12 }
-    );
-
-    observerRef.current = observer;
-    document
-      .querySelectorAll<HTMLElement>("[data-cert-id]")
-      .forEach((c) => observer.observe(c));
-
-    return () => observer.disconnect();
-  }, [activeTab, certifications]);
+ 
 
   /* ---------------- FILTER ---------------- */
   const data =
@@ -105,18 +82,51 @@ export function Certifications() {
     });
   };
 
-  if (loading) {
-    return (
-      <p className="text-center py-10 text-gray-600 dark:text-gray-300">
-        Loading certifications...
-      </p>
-    );
-  }
+ if (loading) {
+  return (
+    <section
+      id="certifications"
+      className="
+        relative
+        min-h-screen
+        overflow-hidden
+        py-6
+        px-6
+        bg-slate-50
+        dark:bg-gray-900
+      "
+    >
+      <div className="max-w-7xl mx-auto">
+        {/* Header Space */}
+        <div className="h-[120px]" />
+
+        {/* Tabs Space */}
+        <div className="h-[60px]" />
+
+        {/* Certificate Cards Placeholder */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="h-[420px]" />
+          <div className="h-[420px]" />
+          <div className="h-[420px]" />
+          <div className="h-[420px]" />
+          <div className="h-[420px]" />
+          <div className="h-[420px]" />
+        </div>
+      </div>
+    </section>
+  );
+}
 
   return (
     <section
       id="certifications"
-      className="relative min-h-screen py-6 px-6 bg-slate-50 dark:bg-gray-900"
+      className="relative
+    min-h-screen
+    overflow-hidden
+    py-6
+    px-6
+    bg-slate-50
+    dark:bg-gray-900"
     >
       <div className="max-w-7xl mx-auto">
              <motion.div
@@ -138,64 +148,136 @@ export function Certifications() {
 
 
         {/* ================= MOBILE TABS ================= */}
-        <div className="flex justify-center mb-6 lg:hidden border-b border-gray-200 dark:border-gray-700">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as TabType)}
-                className={`relative flex items-center gap-2 px-4 py-2 font-semibold transition-all
-                  ${
-                    activeTab === tab.key
-                      ? "text-blue-600 dark:text-blue-400 after:absolute after:left-0 after:bottom-0 after:w-full after:h-1 after:bg-gradient-to-r after:from-blue-500 after:to-pink-500"
-                      : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-300"
-                  }`}
-              >
-                <Icon size={18} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+<div className="flex justify-center mb-4 lg:hidden border-b border-gray-200 dark:border-gray-700">
+  {tabs.map((tab) => {
+    const Icon = tab.icon;
 
-        {/* ================= DESKTOP TABS ================= */}
-        <div className="hidden lg:flex justify-center mb-6">
-          <div className="bg-white dark:bg-gray-800 shadow-md rounded-full p-2 flex gap-4">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key as TabType)}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-full font-semibold transition-all
-                    ${
-                      activeTab === tab.key
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                    }`}
-                >
-                  <Icon size={18} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+    return (
+      <button
+        key={tab.key}
+        onClick={() => setActiveTab(tab.key as TabType)}
+        className={`relative flex items-center gap-1 px-4 py-2 text-base font-semibold transition-colors duration-300 ${
+          activeTab === tab.key
+            ? "text-blue-600 dark:text-blue-400"
+            : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-300"
+        }`}
+      >
+        {activeTab === tab.key && (
+          <motion.div
+            layoutId="certificationMobileTabIndicator"
+            className="absolute bottom-0 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-blue-500 to-pink-500"
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 35,
+            }}
+          />
+        )}
+
+        <span className="relative z-10 flex items-center gap-1">
+          <Icon size={18} />
+          {tab.label}
+        </span>
+      </button>
+    );
+  })}
+</div>
+
+       {/* ================= DESKTOP TABS ================= */}
+<div className="hidden lg:flex justify-center mb-6">
+  <div className="relative bg-white dark:bg-gray-800 shadow-md rounded-full p-2 flex gap-2">
+    {tabs.map((tab) => {
+      const Icon = tab.icon;
+
+      return (
+        <div key={tab.key} className="relative">
+          {activeTab === tab.key && (
+            <motion.div
+              layoutId="certificationDesktopTab"
+              className="absolute inset-0 bg-blue-600 rounded-full"
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 35,
+              }}
+            />
+          )}
+
+          <button
+            onClick={() => setActiveTab(tab.key as TabType)}
+            className={`relative z-10 flex items-center gap-2 px-6 py-2 rounded-full text-base font-semibold transition-all duration-300 ${
+              activeTab === tab.key
+                ? "text-white"
+                : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            }`}
+          >
+            <Icon size={18} />
+            {tab.label}
+          </button>
         </div>
+      );
+    })}
+  </div>
+</div>
 
         {/* ================= GRID ================= */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+       <AnimatePresence mode="wait">
+  <motion.div
+    key={activeTab}
+    className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+    initial={{
+      opacity: 0,
+      x: 30,
+    }}
+    animate={{
+      opacity: 1,
+      x: 0,
+    }}
+    exit={{
+      opacity: 0,
+      x: -30,
+    }}
+    transition={{
+      duration: 0.35,
+    }}
+  >
           {data.map((cert, index) => (
-            <div
-              key={cert.id}
-              data-cert-id
-              className="group relative p-1 rounded-2xl transition-all duration-300
-                opacity-0 translate-y-6 scale-95
-                bg-blue-50 dark:bg-gray-800
-                hover:shadow-[0_0_25px_#3b82f6]
-                hover:-translate-y-2"
-            >
-              <div className="rounded-2xl p-4 transition-all duration-500 group-hover:scale-105">
+           <motion.div
+  key={cert.id}
+  initial={{
+    opacity: 0,
+    y: 50,
+  }}
+  whileInView={{
+    opacity: 1,
+    y: 0,
+  }}
+  viewport={{
+    amount: 0.15,
+    once: false,
+  }}
+  transition={{
+    duration: 0.7,
+    delay: index * 0.08,
+    ease: "easeOut",
+  }}
+  whileHover={{
+    y: -4,
+  }}
+  className="group relative p-1 rounded-2xl"
+>
+              <div
+  className="
+    rounded-2xl
+    p-5
+    bg-white
+    dark:bg-gray-800
+    transition-all
+    duration-500
+    group-hover:scale-[1.05]
+    group-hover:shadow-[0_0_25px_#3b82f6]
+  "
+>
                 <div className="relative overflow-hidden h-48 rounded-xl mb-4 shadow-md">
                   {cert.image && (
                     <img
@@ -239,9 +321,10 @@ export function Certifications() {
                   </a>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
+        </AnimatePresence>
       </div>
       {/* ✅ AUTO NEXT PAGE ARROW */}
 <NextPageArrow />

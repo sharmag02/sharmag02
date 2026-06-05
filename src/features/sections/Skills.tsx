@@ -17,18 +17,23 @@ type SkillRow = {
 export default function Skills() {
   const [activeTab, setActiveTab] = useState<"skill" | "tool">("skill");
   const [categories, setCategories] = useState<SkillRow[]>([]);
-
+const [loading, setLoading] = useState(true);
 
   /* ---------------- FETCH ---------------- */
   const fetchCategories = async () => {
-    const { data, error } = await supabase
-      .from("skills")
-      .select("*")
-      .order("created_at", { ascending: false });
+  setLoading(true);
 
-    if (!error && data) setCategories(data);
-  };
+  const { data, error } = await supabase
+    .from("skills")
+    .select("*")
+    .order("created_at", { ascending: false });
 
+  if (!error && data) {
+    setCategories(data);
+  }
+
+  setLoading(false);
+};
   useEffect(() => {
     fetchCategories();
 
@@ -51,10 +56,44 @@ export default function Skills() {
      const visibleCategories = categories.filter( (c) => c.category === activeTab );
 
   
+if (loading) {
+  return (
+    <section
+      id="skills"
+      className="
+        relative
+        min-h-screen
+        overflow-hidden
+        py-6
+        px-6
+        bg-slate-50
+        dark:bg-gray-900
+      "
+    >
+      <div className="max-w-6xl mx-auto">
+        {/* Header Space */}
+        <div className="h-[120px]" />
 
+        {/* Skills Cards Placeholder */}
+        <div className="grid md:grid-cols-2 gap-10">
+          <div className="h-[220px]" />
+          <div className="h-[220px]" />
+          <div className="h-[220px]" />
+          <div className="h-[220px]" />
+        </div>
+      </div>
+    </section>
+  );
+}
   /* ---------------- UI ---------------- */
   return (
-    <section id="skills" className="relative min-h-screen py-6 px-6 bg-slate-50 dark:bg-gray-900">
+    <section id="skills" className="relative
+    min-h-screen
+    overflow-hidden
+    py-6
+    px-6
+    bg-slate-50
+    dark:bg-gray-900">
       <div className="max-w-6xl mx-auto">
               <motion.div
   className="text-center mb-12"
@@ -148,18 +187,20 @@ export default function Skills() {
   <motion.div
     key={activeTab}
     className="grid md:grid-cols-2 gap-10"
-    initial={{
-      opacity: 0,
-      // y: 20,
-    }}
-    animate={{
-      opacity: 1,
-      y: 0,
-    }}
-    exit={{
-      opacity: 0,
-      y: -20,
-    }}
+  initial={{
+  opacity: 0,
+  x: 30,
+}}
+
+animate={{
+  opacity: 1,
+  x: 0,
+}}
+
+exit={{
+  opacity: 0,
+  x:-30,
+}}
     transition={{
       duration: 0.35,
     }}
@@ -174,12 +215,17 @@ export default function Skills() {
   data-skill-id={`${activeTab}-${idx}`}
  initial={{
   opacity: 0,
-  y: 20,
+  y: 50,
 }}
 
-animate={{
+whileInView={{
   opacity: 1,
   y: 0,
+}}
+
+viewport={{
+  amount: 0.15,
+  once: false,
 }}
   transition={{
     duration: 0.7,
@@ -187,7 +233,7 @@ animate={{
     ease: "easeOut",
   }}
   whileHover={{
-    y: -8,
+    y: -4,
   }}
                 className="group 
                   "
